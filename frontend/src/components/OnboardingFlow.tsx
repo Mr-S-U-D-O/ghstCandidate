@@ -1,16 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useContext, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UploadCloud, CheckCircle2, Loader2, X } from 'lucide-react'
-
-// ── State Interfaces ─────────────────────────────────────────────
-
-interface Profile {
-  name: string
-  cvUploaded: boolean
-  roles: string[]
-  workType: 'Remote' | 'Hybrid' | 'On-site' | ''
-  city: string
-}
+import { UploadCloud, CheckCircle2, Loader2, X, AlertTriangle } from 'lucide-react'
+import { UserContext } from '../context/UserContext'
 
 // ── Main Component ───────────────────────────────────────────────
 
@@ -47,61 +38,103 @@ export default function OnboardingFlow() {
   const [step, setStep] = useState(1)
   const totalSteps = 5
 
-  const [profile, setProfile] = useState<Profile>({
-    name: '',
-    cvUploaded: false,
-    roles: [],
-    workType: '',
-    city: '',
-  })
+  const { candidateProfile, setCandidateProfile } = useContext(UserContext)
 
   // ── Step 1: Basics ─────────────────────────────────────────────
-  const [nameInput, setNameInput] = useState('')
+  const [nameInput, setNameInput] = useState(candidateProfile.name || '')
   const handleNameSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && nameInput.trim()) {
-      setProfile((p) => ({ ...p, name: nameInput.trim() }))
+      setCandidateProfile((p) => ({ ...p, name: nameInput.trim() }))
       setStep(2)
     }
   }
 
   // ── Step 2: Upload ─────────────────────────────────────────────
-  const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'done'>('idle')
+  const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
+  const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const handleUploadClick = () => {
-    if (uploadState !== 'idle') return
+    if (uploadState === 'uploading') return
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
     setUploadState('uploading')
-    setTimeout(() => {
-      setUploadState('done')
-      setProfile((p) => ({ ...p, cvUploaded: true }))
-      setTimeout(() => setStep(3), 1000)
-    }, 1500)
+    setUploadError('')
+
+    try {
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64Data = event.target?.result as string
+        const res = await fetch('http://localhost:3001/api/parse-cv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64Pdf: base64Data })
+        })
+        const data = await res.json()
+
+        if (!data.isValid) {
+          setUploadState('error')
+          setUploadError("This doesn't look like a CV. Please try again.")
+          if (fileInputRef.current) fileInputRef.current.value = ''
+          return
+        }
+
+        // Merge extracted data
+        setCandidateProfile(p => ({
+          ...p,
+          name: data.name || p.name,
+          email: data.email || p.email,
+          skills: data.skills || p.skills,
+          targetRoles: data.targetRoles || p.targetRoles,
+          locations: data.locations || p.locations,
+          rawResumeText: data.experienceSummary || p.rawResumeText
+        }))
+        
+        setUploadState('done')
+        setTimeout(() => setStep(3), 1000)
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      setUploadState('error')
+      setUploadError("An error occurred during parsing.")
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   // ── Step 3: Target ─────────────────────────────────────────────
   const [roleInput, setRoleInput] = useState('')
   const handleRoleAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && roleInput.trim()) {
-      e.preventDefault() // prevent form submission if any
-      if (!profile.roles.includes(roleInput.trim())) {
-        setProfile((p) => ({ ...p, roles: [...p.roles, roleInput.trim()] }))
+      e.preventDefault() 
+      if (!candidateProfile.targetRoles.includes(roleInput.trim())) {
+        setCandidateProfile((p) => ({ ...p, targetRoles: [...p.targetRoles, roleInput.trim()] }))
       }
       setRoleInput('')
     }
   }
   const removeRole = (role: string) => {
-    setProfile((p) => ({ ...p, roles: p.roles.filter((r) => r !== role) }))
+    setCandidateProfile((p) => ({ ...p, targetRoles: p.targetRoles.filter((r) => r !== role) }))
   }
 
   // ── Step 4: Logistics ──────────────────────────────────────────
+  const [workType, setWorkType] = useState<'Remote' | 'Hybrid' | 'On-site' | ''>('')
   const [cityInput, setCityInput] = useState('')
   const handleWorkTypeSelect = (type: 'Remote' | 'Hybrid' | 'On-site') => {
-    setProfile((p) => ({ ...p, workType: type }))
+    setWorkType(type)
     if (type === 'Remote') {
       setTimeout(() => setStep(5), 400)
     }
   }
   const handleCitySubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && cityInput.trim()) {
-      setProfile((p) => ({ ...p, city: cityInput.trim() }))
+      if (!candidateProfile.locations.includes(cityInput.trim())) {
+        setCandidateProfile((p) => ({ ...p, locations: [...p.locations, cityInput.trim()] }))
+      }
       setStep(5)
     }
   }
@@ -153,14 +186,23 @@ export default function OnboardingFlow() {
               ? 'border-gray-300 hover:border-black hover:bg-gray-50'
               : uploadState === 'uploading'
               ? 'border-black bg-gray-50'
+              : uploadState === 'error'
+              ? 'border-red-500 bg-red-50'
               : 'border-green-500 bg-green-50'
           }`}
         >
-          {uploadState === 'idle' && (
+          <input 
+            type="file" 
+            accept="application/pdf"
+            className="hidden" 
+            ref={fileInputRef}
+            onChange={handleFileChange}
+          />
+          {(uploadState === 'idle' || uploadState === 'error') && (
             <>
-              <UploadCloud size={48} className="text-gray-400 mb-4" strokeWidth={1.5} />
-              <p className="font-sans text-base font-medium text-gray-600">
-                Drop your PDF here, or click to browse.
+              <UploadCloud size={48} className={uploadState === 'error' ? "text-red-400 mb-4" : "text-gray-400 mb-4"} strokeWidth={1.5} />
+              <p className={`font-sans text-base font-medium ${uploadState === 'error' ? "text-red-600" : "text-gray-600"}`}>
+                {uploadState === 'error' ? uploadError : "Drop your PDF here, or click to browse."}
               </p>
             </>
           )}
@@ -168,7 +210,7 @@ export default function OnboardingFlow() {
             <>
               <Loader2 size={40} className="text-black animate-spin mb-4" />
               <p className="font-sans text-base font-medium text-black">
-                Parsing document...
+                Ghost is analyzing your CV...
               </p>
             </>
           )}
@@ -191,7 +233,7 @@ export default function OnboardingFlow() {
         
         {/* Tags container */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-8 min-h-[40px]">
-          {profile.roles.map((role) => (
+          {candidateProfile.targetRoles.map((role) => (
             <div
               key={role}
               className="flex items-center gap-2 px-4 py-1.5 bg-gray-100 border border-gray-200 rounded-full font-sans text-sm text-[#0A0A0A]"
@@ -219,7 +261,7 @@ export default function OnboardingFlow() {
           Press Enter ↵ to add.
         </p>
 
-        {profile.roles.length > 0 && (
+        {candidateProfile.targetRoles.length > 0 && (
           <button
             onClick={() => setStep(4)}
             className="mt-8 px-8 py-3 bg-[#0A0A0A] text-white rounded-full font-sans font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
@@ -242,7 +284,7 @@ export default function OnboardingFlow() {
               key={type}
               onClick={() => handleWorkTypeSelect(type as any)}
               className={`px-8 py-6 rounded-xl border-2 transition-all font-heading font-bold text-lg ${
-                profile.workType === type
+                workType === type
                   ? 'border-black text-black bg-gray-50 shadow-sm'
                   : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
               }`}
@@ -254,7 +296,7 @@ export default function OnboardingFlow() {
 
         <div
           className={`w-full max-w-lg mt-12 transition-all duration-500 ease-in-out ${
-            profile.workType === 'Hybrid' || profile.workType === 'On-site'
+            workType === 'Hybrid' || workType === 'On-site'
               ? 'opacity-100 translate-y-0'
               : 'opacity-0 translate-y-4 pointer-events-none'
           }`}

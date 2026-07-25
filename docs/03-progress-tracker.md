@@ -87,12 +87,19 @@
   - [x] Wire Dashboard "Approve & Queue" to hit `/api/apply-job`
   - [x] Move job to APPLIED column on success
 
-- [ ] **Phase 8: DOM Mapping, Blocker Detection & Form Execution** *(Current)*
-  - [ ] Blocker Detection (login wall / CAPTCHAs) with 60s pause
-  - [ ] Extract form fields using page.$$eval
-  - [ ] Gemini API call to map profile to fields
-  - [ ] Fill form live using Playwright
-  - [ ] Update frontend MatchReportPanel button text
+- [x] **Phase 8: DOM Mapping, Blocker Detection & Form Execution** *(Complete)*
+  - [x] Blocker Detection (login wall / CAPTCHAs) with 60s pause
+  - [x] Extract form fields using page.$$eval
+  - [x] Gemini API call to map profile to fields
+  - [x] Fill form live using Playwright
+  - [x] Update frontend MatchReportPanel button text
+
+- [ ] **Phase 9: AI CV Parsing & Global Context** *(Current)*
+  - [ ] Global React Context for CandidateProfile
+  - [ ] POST `/api/parse-cv` endpoint in backend
+  - [ ] Gemini Base64 multimodal parsing
+  - [ ] Frontend Base64 upload & API integration
+  - [ ] Auto-fill onboarding steps 3 & 4 with extracted data
 
 ---
 

@@ -172,7 +172,7 @@ ${truncated}
     // Step 3: Call Gemini
     const genAI = getGenAI()
     const model = genAI.getGenerativeModel({
-      model: "gemini-flash-lite-latest",
+      model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA as any,
@@ -242,10 +242,11 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
 
       // 4. Extract Form Fields
       console.log(`[applyJob] Extracting interactive form elements...`)
-      const fields = await page.$$eval('input[type="text"], input[type="email"], textarea, select', elements => {
+      const fields = await page.$$eval('input[type="text"], input[type="email"], input[type="file"], textarea, select', elements => {
         return elements.map(el => {
           const id = el.id || ''
           const name = (el as HTMLInputElement).name || ''
+          const type = (el as HTMLInputElement).type || el.tagName.toLowerCase()
           let labelText = ''
           if (id) {
             const label = document.querySelector(`label[for="${id}"]`) as HTMLLabelElement
@@ -255,7 +256,7 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
              const parentLabel = el.closest('label')
              if (parentLabel) labelText = (parentLabel as HTMLLabelElement).innerText.trim()
           }
-          return { id, name, label: labelText }
+          return { id, name, type, label: labelText }
         })
       })
       console.log(`[applyJob] Extracted ${fields.length} fields.`)
@@ -264,9 +265,10 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
       let mappedActions: { elementName: string, value: string }[] = []
       if (fields.length > 0) {
         console.log(`[applyJob] Asking Gemini to map candidate profile to fields...`)
-        const genAI = getGenAI()
-        const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash", 
+        try {
+          const genAI = getGenAI()
+          const model = genAI.getGenerativeModel({
+            model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest", 
           generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -291,9 +293,12 @@ Map the candidate profile to the extracted fields.
 Return a JSON array of objects with "elementName" (use the name or id from the fields) and "value" to type in. 
 If a field cannot be answered with the profile, omit it or guess reasonably (e.g. for checkboxes/dropdowns if appropriate).
 `.trim()
-        const result = await model.generateContent(prompt)
-        const rawText = result.response.text().trim()
-        mappedActions = JSON.parse(rawText)
+          const result = await model.generateContent(prompt)
+          const rawText = result.response.text().trim()
+          mappedActions = JSON.parse(rawText)
+        } catch (e) {
+          console.error(`\x1b[31m[applyJob] AI Mapping Failed: ${(e as Error).message}\x1b[0m`)
+        }
       }
 
       // 6. Playwright Execution
@@ -302,8 +307,19 @@ If a field cannot be answered with the profile, omit it or guess reasonably (e.g
         if (!action.elementName) continue
         try {
           const selector = `[name="${action.elementName}"], #${action.elementName}`
-          await page.fill(selector, action.value, { timeout: 2000 })
-          console.log(`  - Filled ${action.elementName} with "${action.value}"`)
+          const el = await page.$(selector)
+          if (el) {
+            const type = await el.evaluate(e => (e as HTMLInputElement).type)
+            if (type === 'file') {
+              await el.setInputFiles('uploads/dummy_resume.pdf', { timeout: 2000 })
+              console.log(`  - Uploaded dummy_resume.pdf to ${action.elementName}`)
+            } else {
+              await el.fill(action.value, { timeout: 2000 })
+              console.log(`  - Filled ${action.elementName} with "${action.value}"`)
+            }
+          } else {
+            console.warn(`  - Element not found for ${action.elementName}`)
+          }
         } catch (e) {
           console.warn(`  - Failed to fill ${action.elementName}:`, (e as Error).message)
         }
