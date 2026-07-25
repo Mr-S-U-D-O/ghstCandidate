@@ -1,7 +1,7 @@
-﻿import express from "express"
+import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
-import { analyzeJob } from "./controllers/jobController.js"
+import { analyzeJob, applyJob } from "./controllers/jobController.js"
 
 // ── Load .env before anything else ────────────────────────────────
 dotenv.config()
@@ -31,8 +31,9 @@ app.get("/health", (_req, res) => {
   })
 })
 
-// Job analysis endpoint
+// Job endpoints
 app.post("/api/analyze-job", analyzeJob)
+app.post("/api/apply-job", applyJob)
 
 // 404 catch-all
 app.use((_req, res) => {

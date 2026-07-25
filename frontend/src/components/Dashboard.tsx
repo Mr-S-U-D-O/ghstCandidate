@@ -1,5 +1,4 @@
 import React, { useState } from "react"
-import { useNavigate } from "react-router-dom"
 import MatchReportPanel from "./MatchReportPanel"
 import {
   LayoutDashboard,
@@ -11,11 +10,15 @@ import {
   Check,
   X,
   Clock,
+  AlertCircle,
+  Loader2,
 } from "lucide-react"
+
+// ── Types ─────────────────────────────────────────────────────────
 
 type ColumnId = "discovered" | "review" | "applied"
 
-interface Job {
+export interface Job {
   id: string
   company: string
   title: string
@@ -23,21 +26,36 @@ interface Job {
   postedAgo: string
   matchScore: number
   column: ColumnId
+  // Live AI data from Gemini
+  verdict: string
+  matchesFound: string[]
+  missingOrWeak: string[]
+  humanInputRequired: string[]
+  sourceUrl?: string
 }
 
-const INITIAL_JOBS: Job[] = [
-  { id: "1", company: "Stripe", title: "Senior Frontend Engineer", location: "Remote", postedAgo: "2 hours ago", matchScore: 94, column: "discovered" },
-  { id: "2", company: "Vercel", title: "Staff Software Engineer", location: "Remote", postedAgo: "5 hours ago", matchScore: 87, column: "discovered" },
-  { id: "3", company: "Linear", title: "Product Engineer", location: "San Francisco, CA", postedAgo: "1 day ago", matchScore: 72, column: "review" },
-  { id: "4", company: "OpenAI", title: "Frontend Engineer, Growth", location: "San Francisco, CA", postedAgo: "3 hours ago", matchScore: 91, column: "review" },
-  { id: "5", company: "Notion", title: "Software Engineer, Platform", location: "Remote", postedAgo: "2 days ago", matchScore: 83, column: "applied" },
-]
+// ── Hardcoded candidate profile (until auth/onboarding wires it) ──
+
+const MOCK_CANDIDATE_PROFILE = {
+  name: "Jane Doe",
+  skills: ["React", "TypeScript", "Next.js", "Node.js", "REST APIs", "Tailwind CSS", "GraphQL", "PostgreSQL"],
+  experience: "5 years of frontend and full-stack engineering at B2B SaaS companies. Led the redesign of a checkout funnel serving 2M monthly users. Strong focus on performance optimization and design systems. Comfortable owning features end-to-end.",
+  preferences: {
+    roles: ["Frontend Engineer", "Staff Engineer", "Full-Stack Engineer", "Product Engineer"],
+    workType: "Remote",
+    location: "Any"
+  }
+}
+
+// ── Columns config ────────────────────────────────────────────────
 
 const COLUMNS: { id: ColumnId; label: string; description: string }[] = [
   { id: "discovered", label: "Discovered", description: "Raw scraped jobs" },
   { id: "review", label: "Review", description: "Awaiting your approval" },
   { id: "applied", label: "Applied", description: "Handled by your Ghost" },
 ]
+
+// ── Match Badge ───────────────────────────────────────────────────
 
 function MatchBadge({ score }: { score: number }) {
   if (score >= 85) {
@@ -61,6 +79,8 @@ function MatchBadge({ score }: { score: number }) {
   )
 }
 
+// ── Job Card ──────────────────────────────────────────────────────
+
 interface JobCardProps {
   job: Job
   onApprove?: (id: string) => void
@@ -76,7 +96,10 @@ function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
       style={{ boxShadow: hovered ? "0 4px 12px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.06)", transition: "box-shadow 0.2s ease" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => onSelect?.(job)}
+      onClick={() => {
+        console.log(`[Dashboard] JobCard clicked: ${job.title} at ${job.company} (ID: ${job.id})`)
+        onSelect?.(job)
+      }}
     >
       <div className="flex items-start justify-between mb-3">
         <span className="font-heading font-bold text-sm text-[#0A0A0A] leading-tight">{job.company}</span>
@@ -110,6 +133,8 @@ function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
   )
 }
 
+// ── Sidebar ───────────────────────────────────────────────────────
+
 type NavPage = "dashboard" | "resumes" | "settings"
 
 const NAV_ITEMS: { id: NavPage; label: string; Icon: React.ElementType }[] = [
@@ -118,15 +143,11 @@ const NAV_ITEMS: { id: NavPage; label: string; Icon: React.ElementType }[] = [
   { id: "settings", label: "Ghost Settings", Icon: Settings },
 ]
 
-interface SidebarProps {
-  activePage: NavPage
-  onNavigate: (page: NavPage) => void
-}
-
-function Sidebar({ activePage, onNavigate }: SidebarProps) {
+function Sidebar({ activePage, onNavigate }: { activePage: NavPage; onNavigate: (p: NavPage) => void }) {
   return (
     <aside className="flex flex-col h-full bg-white border-r border-gray-200" style={{ width: "250px", minWidth: "250px" }}>
-      <div className="p-6 border-b border-gray-100">
+      <div className="p-6 border-b border-gray-100 flex items-center gap-2">
+        <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto" />
         <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight">ghstCandidate</span>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
@@ -155,15 +176,15 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
   )
 }
 
-interface KanbanColumnProps {
+// ── Kanban Column ─────────────────────────────────────────────────
+
+function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: {
   column: typeof COLUMNS[number]
   jobs: Job[]
   onApprove: (id: string) => void
   onReject: (id: string) => void
   onSelect: (job: Job) => void
-}
-
-function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: KanbanColumnProps) {
+}) {
   return (
     <div className="flex flex-col min-h-0">
       <div className="flex items-center justify-between mb-4">
@@ -186,38 +207,147 @@ function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: KanbanCol
   )
 }
 
+// ── Main Dashboard ────────────────────────────────────────────────
+
 export default function Dashboard() {
-  const navigate = useNavigate()
   const [activePage, setActivePage] = useState<NavPage>("dashboard")
-  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [jobs, setJobs] = useState<Job[]>([])   // Empty — no mock data
+  const [jobUrlInput, setJobUrlInput] = useState("")
   const [scraperRunning, setScraperRunning] = useState(false)
+  const [scrapeError, setScrapeError] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
 
-  const handleApprove = (id: string) => setJobs((prev) => prev.map((j) => j.id === id ? { ...j, column: "applied" as ColumnId } : j))
-  const handleReject = (id: string) => setJobs((prev) => prev.filter((j) => j.id !== id))
-  const handleRunScraper = () => { setScraperRunning(true); setTimeout(() => setScraperRunning(false), 2500) }
+  const handleApprove = (id: string) => {
+    console.log("[Dashboard] handleApprove clicked for job ID:", id)
+    setJobs((prev) => prev.map((j) => j.id === id ? { ...j, column: "applied" as ColumnId } : j))
+    // Sync selectedJob if it was the one approved
+    setSelectedJob((prev) => prev?.id === id ? { ...prev, column: "applied" as ColumnId } : prev)
+  }
+
+  const handleReject = (id: string) => {
+    console.log("[Dashboard] handleReject clicked for job ID:", id)
+    setJobs((prev) => prev.filter((j) => j.id !== id))
+    setSelectedJob((prev) => prev?.id === id ? null : prev)
+  }
+
   const jobsByColumn = (colId: ColumnId) => jobs.filter((j) => j.column === colId)
+
+  const handleRunScraper = async () => {
+    const url = jobUrlInput.trim()
+    console.log("[Dashboard] Run AI Scraper clicked. Target URL:", url)
+    if (!url || !url.startsWith("http")) {
+      console.warn("[Dashboard] Run AI Scraper rejected: Invalid URL")
+      setScrapeError("Please paste a valid job URL (starting with http/https).")
+      return
+    }
+
+    setScraperRunning(true)
+    setScrapeError(null)
+
+    try {
+      const res = await fetch("http://localhost:3001/api/analyze-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          candidateProfile: MOCK_CANDIDATE_PROFILE,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }))
+        console.error("[Dashboard] Scraper API returned non-ok status:", res.status, err)
+        throw new Error(err.message ?? "API error")
+      }
+
+      const data = await res.json()
+      console.log("[Dashboard] Scraper API success! Received data:", data)
+
+      // Map Gemini response → Job card shape
+      const newJob: Job = {
+        id: `job-${Date.now()}`,
+        company: data.company ?? "Unknown Company",
+        title: data.role ?? "Unknown Role",
+        location: "See posting",
+        postedAgo: "Just now",
+        matchScore: data.matchScore ?? 0,
+        column: "review",
+        verdict: data.verdict ?? "",
+        matchesFound: data.matchesFound ?? [],
+        missingOrWeak: data.missingOrWeak ?? [],
+        humanInputRequired: data.humanInputRequired ?? [],
+        sourceUrl: url,
+      }
+
+      setJobs((prev) => [newJob, ...prev])
+      setJobUrlInput("")
+    } catch (err) {
+      console.error("[Dashboard] Catch block triggered during scraper run:", err)
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setScrapeError("Network Error: Could not reach the backend server. Please make sure the backend is running (cd backend && npm run dev).")
+      } else {
+        const msg = err instanceof Error ? err.message : "An unknown error occurred."
+        setScrapeError(msg)
+      }
+    } finally {
+      setScraperRunning(false)
+    }
+  }
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
       <Sidebar activePage={activePage} onNavigate={setActivePage} />
+
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-8 py-5 flex items-center justify-between gap-6 shrink-0">
-          <h1 className="font-heading font-bold text-2xl text-[#0A0A0A] shrink-0">Job Tracker</h1>
-          <div className="flex-1 max-w-xl relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Paste a job URL or search role / location..." className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#0A0A0A] transition-colors" />
+        {/* Top Action Bar */}
+        <header className="bg-white border-b border-gray-200 px-8 py-5 flex flex-col gap-3 shrink-0">
+          <div className="flex items-center justify-between gap-6">
+            <h1 className="font-heading font-bold text-2xl text-[#0A0A0A] shrink-0">Job Tracker</h1>
+            <div className="flex-1 max-w-xl relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
+              <input
+                type="url"
+                value={jobUrlInput}
+                onChange={(e) => { setJobUrlInput(e.target.value); setScrapeError(null) }}
+                onKeyDown={(e) => e.key === "Enter" && !scraperRunning && handleRunScraper()}
+                placeholder="Paste a job posting URL (e.g. linkedin.com/jobs/…)"
+                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#0A0A0A] transition-colors"
+                disabled={scraperRunning}
+              />
+            </div>
+            <button
+              onClick={handleRunScraper}
+              disabled={scraperRunning || !jobUrlInput.trim()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
+            >
+              {scraperRunning
+                ? <><Loader2 size={13} strokeWidth={2} className="animate-spin" />Scraping & Analysing...</>
+                : <><Play size={13} strokeWidth={2} />Run AI Scraper</>
+              }
+            </button>
           </div>
-          <button onClick={handleRunScraper} disabled={scraperRunning} className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-60 shrink-0">
-            <Play size={13} strokeWidth={2} className={scraperRunning ? "animate-pulse" : ""} />
-            {scraperRunning ? "Scraping..." : "Run AI Scraper"}
-          </button>
+
+          {/* Error banner */}
+          {scrapeError && (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded-sm">
+              <AlertCircle size={14} className="text-red-500 shrink-0" strokeWidth={1.5} />
+              <p className="font-sans text-xs text-red-700">{scrapeError}</p>
+            </div>
+          )}
         </header>
+
+        {/* Kanban Board */}
         <div className="flex-1 overflow-hidden p-8">
           <div className="grid grid-cols-3 gap-6 h-full">
             {COLUMNS.map((col) => (
-              <KanbanColumn key={col.id} column={col} jobs={jobsByColumn(col.id)} onApprove={handleApprove} onReject={handleReject} onSelect={setSelectedJob} />
+              <KanbanColumn
+                key={col.id}
+                column={col}
+                jobs={jobsByColumn(col.id)}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onSelect={setSelectedJob}
+              />
             ))}
           </div>
         </div>

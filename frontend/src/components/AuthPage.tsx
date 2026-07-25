@@ -30,6 +30,11 @@ export default function AuthPage() {
       >
         <div className="w-full max-w-sm flex flex-col items-center">
           
+          <div className="flex items-center gap-2 mb-8">
+            <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto" />
+            <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight">ghstCandidate</span>
+          </div>
+          
           {/* Toggle Pill */}
           <div className="flex bg-gray-50 rounded-full p-1 border border-gray-200 mb-12 w-64 relative">
             {/* Sliding Background */}

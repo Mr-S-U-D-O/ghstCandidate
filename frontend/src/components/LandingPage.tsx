@@ -51,9 +51,12 @@ const Nav = () => (
   <header className="sticky top-0 z-50 bg-white border-b border-gray-100">
     <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
       {/* Logo */}
-      <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight select-none">
-        ghstCandidate
-      </span>
+      <div className="flex items-center gap-2">
+        <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto" />
+        <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight select-none">
+          ghstCandidate
+        </span>
+      </div>
 
       {/* Actions */}
       <nav className="flex items-center gap-1" aria-label="Main navigation">

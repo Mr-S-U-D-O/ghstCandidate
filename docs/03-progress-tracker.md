@@ -63,13 +63,36 @@
   - [x] Execution plan with Playwright action list
   - [x] Approve & Queue / Reject Job footer actions
 
-- [ ] **Phase 5: Backend Brain — Gemini API Integration** *(Current)*
-  - [ ] Install cors, dotenv, @google/generative-ai
-  - [ ] .env with GEMINI_API_KEY (gitignored)
-  - [ ] Express server.ts boilerplate with CORS + JSON
-  - [ ] POST /api/analyze-job endpoint
-  - [ ] Gemini prompt engineering for match scoring
-  - [ ] Structured JSON response (score, verdict, matches, gaps, plan)
+- [ ] **Phase 5: Backend Brain — Gemini API Integration** *(Complete)*
+  - [x] Install cors, dotenv, @google/generative-ai
+  - [x] .env with GEMINI_API_KEY (gitignored)
+  - [x] Express server.ts boilerplate with CORS + JSON
+  - [x] POST /api/analyze-job endpoint
+  - [x] Gemini prompt engineering for match scoring
+  - [x] Structured JSON response (score, verdict, matches, gaps, plan)
+
+- [x] **Phase 6: Full-Stack Bridge & Live Scraping** *(Complete)*
+  - [x] Backend: Playwright scraping from URL → raw text
+  - [x] Backend: Feed scraped text to Gemini instead of raw JD string
+  - [x] Frontend: Remove mock data, empty Kanban on load
+  - [x] Frontend: Bind input to jobUrlInput state
+  - [x] Frontend: POST to /api/analyze-job on button click
+  - [x] Frontend: Append live result to Kanban in REVIEW column
+  - [x] Frontend: MatchReportPanel reads live AI data (no more hardcoded look-ups)
+
+- [x] **Phase 7: The Application Runner Scaffold** *(Complete)*
+  - [x] Strict model override to `gemini-1.5-flash`
+  - [x] Integrate `logo-transparent.png`
+  - [x] POST `/api/apply-job` endpoint with visible Playwright browser
+  - [x] Wire Dashboard "Approve & Queue" to hit `/api/apply-job`
+  - [x] Move job to APPLIED column on success
+
+- [ ] **Phase 8: DOM Mapping, Blocker Detection & Form Execution** *(Current)*
+  - [ ] Blocker Detection (login wall / CAPTCHAs) with 60s pause
+  - [ ] Extract form fields using page.$$eval
+  - [ ] Gemini API call to map profile to fields
+  - [ ] Fill form live using Playwright
+  - [ ] Update frontend MatchReportPanel button text
 
 ---
 
