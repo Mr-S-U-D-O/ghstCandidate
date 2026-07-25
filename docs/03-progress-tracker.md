@@ -42,18 +42,19 @@
   - [x] Job preferences form (industry, salary, remote/hybrid/on-site)
   - [x] Onboarding completion → redirect to Dashboard
 
-- [ ] **Phase 3: Dashboard & Job Discovery Kanban** *(Current)*
-  - [ ] Sidebar layout with navigation
-  - [ ] Kanban board: Discovered → Review → Applied
-  - [ ] Job card component (title, company, match score, status badge)
-  - [ ] Top action bar with search + "Run AI Scraper"
-  - [ ] Dummy data seeded across columns
+- [x] **Phase 3: Dashboard & Job Discovery Kanban** *(Complete)*
+  - [x] Sidebar layout with navigation
+  - [x] Kanban board: Discovered → Review → Applied
+  - [x] Job card component (title, company, match score, status badge)
+  - [x] Top action bar with search + "Run AI Scraper"
+  - [x] Dummy data seeded across columns
 
-- [ ] **Phase 4: AI Matchmaker & Reporting Popups**
-  - [ ] Match score calculation (Gemini API)
-  - [ ] "Why this match?" popup with AI-generated reasoning
-  - [ ] Application report modal (fields filled, time taken, success/fail)
-  - [ ] Batch action controls (apply all above X% match)
+- [ ] **Phase 4: AI Matchmaker & Reporting Popups** *(Current)*
+  - [ ] Slide-over MatchReportPanel component
+  - [ ] "The Ghost's Verdict" AI reasoning section
+  - [ ] Skill matrix (matches found vs. missing/weak)
+  - [ ] Execution plan with Playwright action list
+  - [ ] Approve & Queue / Reject Job footer actions
 
 - [ ] **Phase 5: Playwright Execution Arena (WebSockets)**
   - [ ] WebSocket server (backend)
