@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+/* ============================================================
+   ghstCandidate — Global CSS Foundation
+   Design System: Minimalist, whitespace-dominant, high-contrast
+   Fonts: Comfortaa (heading) · Lato (body)
+   ============================================================ */
+
+/* --- CSS Custom Properties ---------------------------------- */
+:root {
+  /* Achromatic base palette */
+  --color-black:     #0A0A0A;
+  --color-white:     #FFFFFF;
+  --color-gray-50:   #F9FAFB;
+  --color-gray-100:  #F3F4F6;
+  --color-gray-300:  #D1D5DB;
+  --color-gray-500:  #6B7280;
+  --color-gray-700:  #374151;
+  --color-gray-900:  #111827;
+
+  /* Status indicator colors (use ONLY for status badges/labels) */
+  --color-status-success: #16A34A;
+  --color-status-warning: #D97706;
+  --color-status-error:   #DC2626;
+  --color-status-info:    #2563EB;
+
+  /* Spacing (4px base grid) */
+  --space-1:  0.25rem;   /* 4px  */
+  --space-2:  0.5rem;    /* 8px  */
+  --space-3:  0.75rem;   /* 12px */
+  --space-4:  1rem;      /* 16px */
+  --space-6:  1.5rem;    /* 24px */
+  --space-8:  2rem;      /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
+  --space-20: 5rem;      /* 80px */
+  --space-24: 6rem;      /* 96px */
+
+  /* Typography */
+  --font-sans:    'Lato', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Comfortaa', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* --- Reset & Base ------------------------------------------ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-white);
+  color: var(--color-gray-900);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  min-height: 100svh;
+}
+
+/* --- Typography -------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--color-black);
+  margin: 0 0 var(--space-4);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+h1 { font-size: 2.25rem; }   /* 36px */
+h2 { font-size: 1.5rem; }    /* 24px */
+h3 { font-size: 1.125rem; }  /* 18px */
+
+p {
+  margin: 0 0 var(--space-4);
+  color: var(--color-gray-700);
+  line-height: 1.65;
+}
+
+a {
+  color: var(--color-black);
+  text-decoration: none;
+}
+
+/* --- Layout Shell ------------------------------------------ */
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-white);
+}

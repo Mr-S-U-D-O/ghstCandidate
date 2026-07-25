@@ -1,0 +1,22 @@
+# ── Dependencies ────────────────────────────────────────────
+node_modules/
+
+# ── Build outputs ───────────────────────────────────────────
+dist/
+build/
+.vite/
+
+# ── Environment ─────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── OS / Editor ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+*.log
+
+# ── Playwright ──────────────────────────────────────────────
+playwright-report/
+test-results/
