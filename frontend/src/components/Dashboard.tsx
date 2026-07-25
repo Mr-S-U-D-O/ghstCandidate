@@ -1,5 +1,6 @@
-﻿import React, { useState } from "react"
+import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import MatchReportPanel from "./MatchReportPanel"
 import {
   LayoutDashboard,
   FileText,
@@ -64,9 +65,10 @@ interface JobCardProps {
   job: Job
   onApprove?: (id: string) => void
   onReject?: (id: string) => void
+  onSelect?: (job: Job) => void
 }
 
-function JobCard({ job, onApprove, onReject }: JobCardProps) {
+function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
   const [hovered, setHovered] = useState(false)
   return (
     <div
@@ -74,6 +76,7 @@ function JobCard({ job, onApprove, onReject }: JobCardProps) {
       style={{ boxShadow: hovered ? "0 4px 12px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.06)", transition: "box-shadow 0.2s ease" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => onSelect?.(job)}
     >
       <div className="flex items-start justify-between mb-3">
         <span className="font-heading font-bold text-sm text-[#0A0A0A] leading-tight">{job.company}</span>
@@ -157,9 +160,10 @@ interface KanbanColumnProps {
   jobs: Job[]
   onApprove: (id: string) => void
   onReject: (id: string) => void
+  onSelect: (job: Job) => void
 }
 
-function KanbanColumn({ column, jobs, onApprove, onReject }: KanbanColumnProps) {
+function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: KanbanColumnProps) {
   return (
     <div className="flex flex-col min-h-0">
       <div className="flex items-center justify-between mb-4">
@@ -175,7 +179,7 @@ function KanbanColumn({ column, jobs, onApprove, onReject }: KanbanColumnProps) 
             <p className="font-sans text-xs text-gray-300">No jobs here yet</p>
           </div>
         ) : (
-          jobs.map((job) => <JobCard key={job.id} job={job} onApprove={onApprove} onReject={onReject} />)
+          jobs.map((job) => <JobCard key={job.id} job={job} onApprove={onApprove} onReject={onReject} onSelect={onSelect} />)
         )}
       </div>
     </div>
@@ -188,6 +192,7 @@ export default function Dashboard() {
   const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS)
   const [searchQuery, setSearchQuery] = useState("")
   const [scraperRunning, setScraperRunning] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
 
   const handleApprove = (id: string) => setJobs((prev) => prev.map((j) => j.id === id ? { ...j, column: "applied" as ColumnId } : j))
   const handleReject = (id: string) => setJobs((prev) => prev.filter((j) => j.id !== id))
@@ -212,11 +217,20 @@ export default function Dashboard() {
         <div className="flex-1 overflow-hidden p-8">
           <div className="grid grid-cols-3 gap-6 h-full">
             {COLUMNS.map((col) => (
-              <KanbanColumn key={col.id} column={col} jobs={jobsByColumn(col.id)} onApprove={handleApprove} onReject={handleReject} />
+              <KanbanColumn key={col.id} column={col} jobs={jobsByColumn(col.id)} onApprove={handleApprove} onReject={handleReject} onSelect={setSelectedJob} />
             ))}
           </div>
         </div>
       </div>
+
+      {/* Match Report Slide-over */}
+      <MatchReportPanel
+        job={selectedJob}
+        isOpen={selectedJob !== null}
+        onClose={() => setSelectedJob(null)}
+        onApprove={(id) => { handleApprove(id); setSelectedJob(null) }}
+        onReject={(id) => { handleReject(id); setSelectedJob(null) }}
+      />
     </div>
   )
 }

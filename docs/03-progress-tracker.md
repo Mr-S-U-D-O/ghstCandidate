@@ -56,13 +56,20 @@
   - [ ] Execution plan with Playwright action list
   - [ ] Approve & Queue / Reject Job footer actions
 
-- [ ] **Phase 5: Playwright Execution Arena (WebSockets)**
-  - [ ] WebSocket server (backend)
-  - [ ] Playwright job application runner
-  - [ ] Screenshot streaming to frontend
-  - [ ] Human-in-the-loop prompt surface (pause + question card in UI)
-  - [ ] Real-time progress bar per application
-  - [ ] Session log / transcript of actions taken
+- [x] **Phase 4: AI Matchmaker & Reporting Popups** *(Complete)*
+  - [x] Slide-over MatchReportPanel component
+  - [x] "The Ghost's Verdict" AI reasoning section
+  - [x] Skill matrix (matches found vs. missing/weak)
+  - [x] Execution plan with Playwright action list
+  - [x] Approve & Queue / Reject Job footer actions
+
+- [ ] **Phase 5: Backend Brain — Gemini API Integration** *(Current)*
+  - [ ] Install cors, dotenv, @google/generative-ai
+  - [ ] .env with GEMINI_API_KEY (gitignored)
+  - [ ] Express server.ts boilerplate with CORS + JSON
+  - [ ] POST /api/analyze-job endpoint
+  - [ ] Gemini prompt engineering for match scoring
+  - [ ] Structured JSON response (score, verdict, matches, gaps, plan)
 
 ---
 
