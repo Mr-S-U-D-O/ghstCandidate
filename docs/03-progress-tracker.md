@@ -114,14 +114,21 @@
   - [x] Frontend: "Needs Input" amber badge on Kanban card
   - [x] Frontend: Ghost Profiler sidebar tab pulse animation
 
-- [ ] **Phase 12: Permanent Memory (Supabase Integration)** *(Current)*
-  - [ ] Supabase schema: profiles, jobs, chat_history tables
-  - [ ] Frontend & backend Supabase client initialization
-  - [ ] Supabase Auth replacing mock redirect
-  - [ ] Route protection via AuthGuard
-  - [ ] Profile sync to DB (onboarding + Ghost Profiler)
-  - [ ] Jobs Kanban persistence to DB
-  - [ ] Chat history persistence to DB
+- [x] **Phase 12: Permanent Memory (Supabase Integration)** *(Complete)*
+  - [x] Supabase schema: profiles, jobs, chat_history tables
+  - [x] Frontend & backend Supabase client initialization
+  - [x] Supabase Auth replacing mock redirect
+  - [x] Route protection via AuthGuard
+  - [x] Profile sync to DB (onboarding + Ghost Profiler)
+  - [x] Jobs Kanban persistence to DB
+  - [x] Chat history persistence to DB
+
+- [ ] **Phase 13: The Hunter (Automated Job Crawler)** *(Current)*
+  - [ ] Refactor jobController.ts for reusable Gemini logic
+  - [ ] Implement `POST /api/hunt-jobs` to scrape LinkedIn and process batch
+  - [ ] Insert discovered jobs directly to Supabase
+  - [ ] Update Dashboard UI with Hunter Mode toggle
+  - [ ] Wire Hunter UI to endpoint and refresh Kanban list
 
 ---
 

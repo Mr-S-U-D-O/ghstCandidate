@@ -229,44 +229,103 @@ export default function Dashboard() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [ghostPulse, setGhostPulse] = useState(false)
 
+  // Hunter State
+  const [isHunterMode, setIsHunterMode] = useState(false)
+  const [hunterRole, setHunterRole] = useState("")
+  const [hunterLocation, setHunterLocation] = useState("")
+  const [hunterRunning, setHunterRunning] = useState(false)
+
+  // Pre-fill hunter inputs
+  useEffect(() => {
+    if (candidateProfile?.targetRoles?.length && !hunterRole) {
+      setHunterRole(candidateProfile.targetRoles[0])
+    }
+    if (candidateProfile?.locations?.length && !hunterLocation) {
+      setHunterLocation(candidateProfile.locations[0])
+    }
+  }, [candidateProfile])
+
+  const fetchJobs = async () => {
+    if (!user) return
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[Dashboard] Failed to load jobs:', error.message)
+      return
+    }
+
+    if (data) {
+      const mapped: Job[] = data.map(row => ({
+        id: row.id,
+        company: row.company,
+        title: row.title,
+        location: row.location,
+        postedAgo: row.posted_ago,
+        matchScore: row.match_score,
+        column: row.column as ColumnId,
+        verdict: row.verdict || '',
+        matchesFound: row.matches_found || [],
+        missingOrWeak: row.missing_or_weak || [],
+        humanInputRequired: row.human_input_required || [],
+        sourceUrl: row.source_url || undefined,
+        needsInput: row.needs_input || false,
+        missingField: row.missing_field || undefined,
+      }))
+      setJobs(mapped)
+      console.log(`[Dashboard] Loaded ${mapped.length} jobs from Supabase.`)
+    }
+  }
+
   // Load jobs from Supabase on mount
   useEffect(() => {
-    if (!user) return
-    const loadJobs = async () => {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('[Dashboard] Failed to load jobs:', error.message)
-        return
-      }
-
-      if (data) {
-        const mapped: Job[] = data.map(row => ({
-          id: row.id,
-          company: row.company,
-          title: row.title,
-          location: row.location,
-          postedAgo: row.posted_ago,
-          matchScore: row.match_score,
-          column: row.column as ColumnId,
-          verdict: row.verdict || '',
-          matchesFound: row.matches_found || [],
-          missingOrWeak: row.missing_or_weak || [],
-          humanInputRequired: row.human_input_required || [],
-          sourceUrl: row.source_url || undefined,
-          needsInput: row.needs_input || false,
-          missingField: row.missing_field || undefined,
-        }))
-        setJobs(mapped)
-        console.log(`[Dashboard] Loaded ${mapped.length} jobs from Supabase.`)
-      }
-    }
-    loadJobs()
+    fetchJobs()
   }, [user])
+
+  const handleHuntJobs = async () => {
+    if (!hunterRole.trim() || !hunterLocation.trim()) {
+       setScrapeError("Please provide both a Role and Location.")
+       return
+    }
+    setHunterRunning(true)
+    setScrapeError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (token) headers["Authorization"] = `Bearer ${token}`
+
+      const res = await fetch("http://localhost:3001/api/hunt-jobs", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          searchRole: hunterRole,
+          location: hunterLocation,
+          candidateProfile,
+          userId: user?.id
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }))
+        throw new Error(err.message ?? "API error")
+      }
+
+      const data = await res.json()
+      console.log(`[Dashboard] Hunter complete! Discovered ${data.count} jobs.`)
+      await fetchJobs() // Refresh UI from Supabase
+
+    } catch (err: unknown) {
+      setScrapeError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setHunterRunning(false)
+    }
+  }
 
   const navigateTo = (page: NavPage) => {
     if (page === 'chat') setGhostPulse(false)
@@ -394,29 +453,85 @@ export default function Dashboard() {
             {/* Top Action Bar */}
             <header className="bg-white border-b border-gray-200 px-8 py-5 flex flex-col gap-3 shrink-0">
               <div className="flex items-center justify-between gap-6">
-                <h1 className="font-heading font-bold text-2xl text-[#0A0A0A] shrink-0">Job Tracker</h1>
-                <div className="flex-1 max-w-xl relative">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
-                  <input
-                    type="url"
-                    value={jobUrlInput}
-                    onChange={(e) => { setJobUrlInput(e.target.value); setScrapeError(null) }}
-                    onKeyDown={(e) => e.key === "Enter" && !scraperRunning && handleRunScraper()}
-                    placeholder="Paste a job posting URL (e.g. linkedin.com/jobs/…)"
-                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#0A0A0A] transition-colors"
-                    disabled={scraperRunning}
-                  />
+                <div className="flex items-center gap-4 shrink-0">
+                  <h1 className="font-heading font-bold text-2xl text-[#0A0A0A]">Job Tracker</h1>
+                  
+                  {/* Mode Toggle */}
+                  <div className="flex bg-gray-100 p-0.5 rounded-sm">
+                    <button 
+                      onClick={() => { setIsHunterMode(false); setScrapeError(null) }}
+                      className={`px-3 py-1 font-sans text-xs font-medium rounded-sm transition-colors ${!isHunterMode ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Paste Link
+                    </button>
+                    <button 
+                      onClick={() => { setIsHunterMode(true); setScrapeError(null) }}
+                      className={`px-3 py-1 font-sans text-xs font-medium rounded-sm transition-colors flex items-center gap-1 ${isHunterMode ? 'bg-white shadow-sm text-[#0A0A0A]' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      <Bot size={12} /> The Hunter
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={handleRunScraper}
-                  disabled={scraperRunning || !jobUrlInput.trim()}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
-                >
-                  {scraperRunning
-                    ? <><Loader2 size={13} strokeWidth={2} className="animate-spin" />Scraping & Analysing...</>
-                    : <><Play size={13} strokeWidth={2} />Run AI Scraper</>
-                  }
-                </button>
+
+                {isHunterMode ? (
+                  <div className="flex-1 flex gap-3">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={hunterRole}
+                        onChange={(e) => setHunterRole(e.target.value)}
+                        placeholder="Role (e.g. Frontend Engineer)"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
+                        disabled={hunterRunning}
+                      />
+                    </div>
+                    <div className="w-48 relative">
+                      <input
+                        type="text"
+                        value={hunterLocation}
+                        onChange={(e) => setHunterLocation(e.target.value)}
+                        placeholder="Location (e.g. Remote)"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
+                        disabled={hunterRunning}
+                      />
+                    </div>
+                    <button
+                      onClick={handleHuntJobs}
+                      disabled={hunterRunning || !hunterRole.trim() || !hunterLocation.trim()}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 disabled:opacity-50 shrink-0"
+                    >
+                      {hunterRunning
+                        ? <><Loader2 size={13} className="animate-spin" />Scanning...</>
+                        : <><Search size={13} />Hunt Roles</>
+                      }
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex gap-3">
+                    <div className="flex-1 relative">
+                      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
+                      <input
+                        type="url"
+                        value={jobUrlInput}
+                        onChange={(e) => { setJobUrlInput(e.target.value); setScrapeError(null) }}
+                        onKeyDown={(e) => e.key === "Enter" && !scraperRunning && handleRunScraper()}
+                        placeholder="Paste a job posting URL (e.g. linkedin.com/jobs/…)"
+                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#0A0A0A] transition-colors"
+                        disabled={scraperRunning}
+                      />
+                    </div>
+                    <button
+                      onClick={handleRunScraper}
+                      disabled={scraperRunning || !jobUrlInput.trim()}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      {scraperRunning
+                        ? <><Loader2 size={13} strokeWidth={2} className="animate-spin" />Analysing...</>
+                        : <><Play size={13} strokeWidth={2} />Run AI Scraper</>
+                      }
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Error banner */}

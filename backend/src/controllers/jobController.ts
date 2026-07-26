@@ -1,18 +1,19 @@
 import { Request, Response } from "express"
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai"
-import { chromium } from "playwright"
+import { chromium, BrowserContext } from "playwright"
+import { supabase } from "../supabaseClient.js"
+import { createClient } from "@supabase/supabase-js"
 
 // ── Types ──────────────────────────────────────────────────────────
 
 export interface CandidateProfile {
-  name?: string
+  name: string
+  email: string
+  targetRoles: string[]
+  locations: string[]
   skills: string[]
-  experience: string
-  preferences: {
-    roles: string[]
-    workType: string
-    location?: string
-  }
+  rawResumeText: string
+  [key: string]: any
 }
 
 export interface AnalyzeJobPayload {
@@ -107,6 +108,61 @@ async function scrapeJobPage(url: string): Promise<string> {
 
 // ── Controller ────────────────────────────────────────────────────
 
+export async function analyzeJobText(jobText: string, candidateProfile: CandidateProfile, url: string): Promise<JobAnalysisResult> {
+  const truncated = jobText.slice(0, 8000)
+
+  // Step 2: Build prompt
+  const prompt = `
+You are the Ghost Worker — an elite technical recruiter AI embedded in the ghstCandidate platform.
+
+Analyse the job posting text below against the candidate profile. Be honest, technical, and specific.
+Do NOT hallucinate skills. Do NOT give inflated match scores.
+
+## Candidate Profile
+- Name: ${candidateProfile.name ?? "Anonymous"}
+- Skills: ${candidateProfile.skills.join(", ")}
+- Target Roles: ${candidateProfile.targetRoles.join(", ")}
+- Locations: ${candidateProfile.locations.join(", ")}
+- Raw Resume Context: ${candidateProfile.rawResumeText.slice(0, 1000)}
+
+## Job Posting (scraped from: ${url})
+${truncated}
+
+## Your Task
+- Extract the company name and exact job title.
+- Score the match 0-100 honestly.
+- List 3-5 concrete matches between the candidate and this specific JD.
+- List 1-3 real gaps. Empty array if none.
+- List any application fields a bot cannot fill (salary, visa, cover letter). Empty array if none.
+- Write a verdict: 2-3 sentences, specific to THIS pairing.
+`.trim()
+
+  // Step 3: Call Gemini
+  const genAI = getGenAI()
+  const model = genAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA as any,
+    },
+  })
+
+  const result = await model.generateContent(prompt)
+  const rawText = result.response.text().trim()
+
+  // Step 4: Parse
+  let parsed: JobAnalysisResult
+  try {
+    parsed = JSON.parse(rawText) as JobAnalysisResult
+  } catch (e) {
+    throw new Error(`Gemini parse error: ${rawText}`)
+  }
+
+  // Clamp score
+  parsed.matchScore = Math.max(0, Math.min(100, Math.round(parsed.matchScore)))
+  return parsed
+}
+
 export async function analyzeJob(req: Request, res: Response): Promise<void> {
   try {
     const { url, candidateProfile } = req.body as AnalyzeJobPayload
@@ -116,8 +172,8 @@ export async function analyzeJob(req: Request, res: Response): Promise<void> {
       res.status(400).json({ error: "Bad Request", message: "A valid http(s) URL is required." })
       return
     }
-    if (!candidateProfile || !Array.isArray(candidateProfile.skills) || !candidateProfile.experience) {
-      res.status(400).json({ error: "Bad Request", message: "candidateProfile with skills[] and experience is required." })
+    if (!candidateProfile || !Array.isArray(candidateProfile.skills)) {
+      res.status(400).json({ error: "Bad Request", message: "candidateProfile is missing required fields." })
       return
     }
 
@@ -138,63 +194,7 @@ export async function analyzeJob(req: Request, res: Response): Promise<void> {
       return
     }
 
-    // Truncate to keep token count sane (~8000 chars)
-    const truncated = jobDescription.slice(0, 8000)
-    console.log(`[analyzeJob] Scraped ${jobDescription.length} chars, sending ${truncated.length} to Gemini`)
-
-    // Step 2: Build prompt
-    const prompt = `
-You are the Ghost Worker — an elite technical recruiter AI embedded in the ghstCandidate platform.
-
-Analyse the job posting text below against the candidate profile. Be honest, technical, and specific.
-Do NOT hallucinate skills. Do NOT give inflated match scores.
-
-## Candidate Profile
-- Name: ${candidateProfile.name ?? "Anonymous"}
-- Skills: ${candidateProfile.skills.join(", ")}
-- Experience: ${candidateProfile.experience}
-- Target Roles: ${candidateProfile.preferences.roles.join(", ")}
-- Work Type: ${candidateProfile.preferences.workType}
-- Location: ${candidateProfile.preferences.location ?? "No preference"}
-
-## Job Posting (scraped from: ${url})
-${truncated}
-
-## Your Task
-- Extract the company name and exact job title.
-- Score the match 0-100 honestly.
-- List 3-5 concrete matches between the candidate and this specific JD.
-- List 1-3 real gaps. Empty array if none.
-- List any application fields a bot cannot fill (salary, visa, cover letter). Empty array if none.
-- Write a verdict: 2-3 sentences, specific to THIS pairing.
-`.trim()
-
-    // Step 3: Call Gemini
-    const genAI = getGenAI()
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA as any,
-      },
-    })
-
-    const result = await model.generateContent(prompt)
-    const rawText = result.response.text().trim()
-
-    // Step 4: Parse (schema enforcement makes this reliable, but guard anyway)
-    let parsed: JobAnalysisResult
-    try {
-      parsed = JSON.parse(rawText) as JobAnalysisResult
-    } catch {
-      console.error("[analyzeJob] Gemini returned non-JSON:", rawText)
-      res.status(502).json({ error: "Parse Error", message: "Gemini returned an unexpected format.", raw: rawText })
-      return
-    }
-
-    // Clamp score
-    parsed.matchScore = Math.max(0, Math.min(100, Math.round(parsed.matchScore)))
-
+    const parsed = await analyzeJobText(jobDescription, candidateProfile, url)
     console.log(`[analyzeJob] Done — "${parsed.role}" at "${parsed.company}" | score: ${parsed.matchScore}`)
     res.json(parsed)
 
@@ -363,5 +363,117 @@ Do NOT skip fields — always include every field in your response.
     console.error("[applyJob] Execution failed:", message)
     try { await browser.close() } catch {}
     res.status(500).json({ error: "Internal Server Error", message })
+  }
+}
+
+// ── The Hunter (Automated Crawler) ─────────────────────────────────
+
+export async function huntJobs(req: Request, res: Response): Promise<void> {
+  const { searchRole, location, candidateProfile, userId } = req.body
+
+  if (!searchRole || !location || !candidateProfile || !userId) {
+    res.status(400).json({ error: "Missing parameters" })
+    return
+  }
+
+  console.log(`[huntJobs] Starting hunt for '${searchRole}' in '${location}' for user ${userId}`)
+
+  // Search URL (LinkedIn Public Jobs)
+  const query = encodeURIComponent(searchRole)
+  const loc = encodeURIComponent(location)
+  const searchUrl = `https://www.linkedin.com/jobs/search?keywords=${query}&location=${loc}`
+
+  const browser = await chromium.launch({ headless: true })
+  let discoveredCount = 0
+
+  try {
+    const context = await browser.newContext({
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+    const page = await context.newPage()
+    
+    console.log(`[huntJobs] Navigating to ${searchUrl}`)
+    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {})
+
+    // Extract job links from the search page
+    // LinkedIn public search job links typically look like: /jobs/view/xyz or have base-card class
+    const jobLinks = await page.$$eval('a.base-card__full-link, a.job-search-card__title, a.result-card__full-card-link', (anchors) => 
+      anchors.map(a => (a as HTMLAnchorElement).href).slice(0, 3)
+    )
+
+    console.log(`[huntJobs] Found ${jobLinks.length} job links to process.`)
+
+    for (const jobUrl of jobLinks) {
+      try {
+        console.log(`[huntJobs] Processing: ${jobUrl}`)
+        const jobPage = await context.newPage()
+        await jobPage.goto(jobUrl, { waitUntil: "domcontentloaded", timeout: 10000 }).catch(() => {})
+        
+        // Try to click "Show more" to expand description if it exists
+        const showMoreBtn = await jobPage.$('button.show-more-less-html__button')
+        if (showMoreBtn) {
+           await showMoreBtn.click().catch(() => {})
+           await jobPage.waitForTimeout(500)
+        }
+
+        // Extract description text
+        // Usually inside .show-more-less-html__markup or similar, but document.body is a safe fallback
+        const text = await jobPage.$eval('body', el => (el as HTMLElement).innerText).catch(() => "")
+        await jobPage.close()
+
+        if (!text || text.length < 100) {
+          console.log(`[huntJobs] Skipping ${jobUrl} - no readable content`)
+          continue
+        }
+
+        // Analyze via Gemini
+        const analysis = await analyzeJobText(text, candidateProfile, jobUrl)
+
+        // Insert to Supabase
+        const dbCol = analysis.matchScore > 75 ? 'review' : 'discovered'
+        const jobRow = {
+          user_id: userId,
+          company: analysis.company,
+          title: analysis.role,
+          location: location,
+          posted_ago: "Just now",
+          match_score: analysis.matchScore,
+          "column": dbCol,
+          verdict: analysis.verdict,
+          matches_found: analysis.matchesFound,
+          missing_or_weak: analysis.missingOrWeak,
+          human_input_required: analysis.humanInputRequired,
+          source_url: jobUrl,
+          needs_input: false,
+        }
+
+        const authHeader = req.headers.authorization
+        let scopedSupabase = supabase
+        if (authHeader) {
+          scopedSupabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!, {
+            global: { headers: { Authorization: authHeader } }
+          })
+        }
+
+        const { error } = await scopedSupabase.from('jobs').insert(jobRow)
+        if (error) {
+          console.error(`[huntJobs] DB Insert Error: ${error.message}`)
+        } else {
+          discoveredCount++
+          console.log(`[huntJobs] Successfully persisted: ${analysis.role} at ${analysis.company}`)
+        }
+      } catch (jobErr) {
+        console.error(`[huntJobs] Error processing job ${jobUrl}:`, jobErr)
+      }
+    }
+
+    res.json({ success: true, count: discoveredCount })
+
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error("[huntJobs] Execution failed:", message)
+    res.status(500).json({ error: "Internal Server Error", message })
+  } finally {
+    try { await browser.close() } catch {}
   }
 }
