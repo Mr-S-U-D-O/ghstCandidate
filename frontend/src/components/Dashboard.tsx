@@ -1,6 +1,8 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useContext } from "react"
 import MatchReportPanel from "./MatchReportPanel"
 import GhostChat from "./GhostChat"
+import { UserContext } from "../context/UserContext"
+import { supabase } from "../supabaseClient"
 import {
   LayoutDashboard,
   FileText,
@@ -39,18 +41,6 @@ export interface Job {
   missingField?: string
 }
 
-// ── Hardcoded candidate profile (until auth/onboarding wires it) ──
-
-const MOCK_CANDIDATE_PROFILE = {
-  name: "Jane Doe",
-  skills: ["React", "TypeScript", "Next.js", "Node.js", "REST APIs", "Tailwind CSS", "GraphQL", "PostgreSQL"],
-  experience: "5 years of frontend and full-stack engineering at B2B SaaS companies. Led the redesign of a checkout funnel serving 2M monthly users. Strong focus on performance optimization and design systems. Comfortable owning features end-to-end.",
-  preferences: {
-    roles: ["Frontend Engineer", "Staff Engineer", "Full-Stack Engineer", "Product Engineer"],
-    workType: "Remote",
-    location: "Any"
-  }
-}
 
 // ── Columns config ────────────────────────────────────────────────
 
@@ -230,13 +220,53 @@ function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: {
 // ── Main Dashboard ────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { user, candidateProfile } = useContext(UserContext)
   const [activePage, setActivePage] = useState<NavPage>("dashboard")
-  const [jobs, setJobs] = useState<Job[]>([])   // Empty — no mock data
+  const [jobs, setJobs] = useState<Job[]>([])
   const [jobUrlInput, setJobUrlInput] = useState("")
   const [scraperRunning, setScraperRunning] = useState(false)
   const [scrapeError, setScrapeError] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [ghostPulse, setGhostPulse] = useState(false)
+
+  // Load jobs from Supabase on mount
+  useEffect(() => {
+    if (!user) return
+    const loadJobs = async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('[Dashboard] Failed to load jobs:', error.message)
+        return
+      }
+
+      if (data) {
+        const mapped: Job[] = data.map(row => ({
+          id: row.id,
+          company: row.company,
+          title: row.title,
+          location: row.location,
+          postedAgo: row.posted_ago,
+          matchScore: row.match_score,
+          column: row.column as ColumnId,
+          verdict: row.verdict || '',
+          matchesFound: row.matches_found || [],
+          missingOrWeak: row.missing_or_weak || [],
+          humanInputRequired: row.human_input_required || [],
+          sourceUrl: row.source_url || undefined,
+          needsInput: row.needs_input || false,
+          missingField: row.missing_field || undefined,
+        }))
+        setJobs(mapped)
+        console.log(`[Dashboard] Loaded ${mapped.length} jobs from Supabase.`)
+      }
+    }
+    loadJobs()
+  }, [user])
 
   const navigateTo = (page: NavPage) => {
     if (page === 'chat') setGhostPulse(false)
@@ -246,14 +276,23 @@ export default function Dashboard() {
   const handleApprove = (id: string) => {
     console.log("[Dashboard] handleApprove clicked for job ID:", id)
     setJobs((prev) => prev.map((j) => j.id === id ? { ...j, column: "applied" as ColumnId } : j))
-    // Sync selectedJob if it was the one approved
     setSelectedJob((prev) => prev?.id === id ? { ...prev, column: "applied" as ColumnId } : prev)
+    // Sync to Supabase
+    if (user) {
+      supabase.from('jobs').update({ column: 'applied' }).eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('[Dashboard] Failed to update job column:', error.message) })
+    }
   }
 
   const handleReject = (id: string) => {
     console.log("[Dashboard] handleReject clicked for job ID:", id)
     setJobs((prev) => prev.filter((j) => j.id !== id))
     setSelectedJob((prev) => prev?.id === id ? null : prev)
+    // Delete from Supabase
+    if (user) {
+      supabase.from('jobs').delete().eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('[Dashboard] Failed to delete job:', error.message) })
+    }
   }
 
   const jobsByColumn = (colId: ColumnId) => jobs.filter((j) => j.column === colId)
@@ -276,7 +315,7 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url,
-          candidateProfile: MOCK_CANDIDATE_PROFILE,
+          candidateProfile,
         }),
       })
 
@@ -290,19 +329,40 @@ export default function Dashboard() {
       console.log("[Dashboard] Scraper API success! Received data:", data)
 
       // Map Gemini response → Job card shape
-      const newJob: Job = {
-        id: `job-${Date.now()}`,
+      const jobRow = {
+        user_id: user?.id,
         company: data.company ?? "Unknown Company",
         title: data.role ?? "Unknown Role",
         location: "See posting",
-        postedAgo: "Just now",
-        matchScore: data.matchScore ?? 0,
+        posted_ago: "Just now",
+        match_score: data.matchScore ?? 0,
         column: "review",
         verdict: data.verdict ?? "",
-        matchesFound: data.matchesFound ?? [],
-        missingOrWeak: data.missingOrWeak ?? [],
-        humanInputRequired: data.humanInputRequired ?? [],
-        sourceUrl: url,
+        matches_found: data.matchesFound ?? [],
+        missing_or_weak: data.missingOrWeak ?? [],
+        human_input_required: data.humanInputRequired ?? [],
+        source_url: url,
+        needs_input: false,
+      }
+
+      // Insert into Supabase and use the DB-generated UUID
+      let newJob: Job
+      if (user) {
+        const { data: inserted, error } = await supabase
+          .from('jobs')
+          .insert(jobRow)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('[Dashboard] Failed to insert job into Supabase:', error.message)
+          // Fall back to local-only job with temp ID
+          newJob = { id: `job-${Date.now()}`, company: jobRow.company, title: jobRow.title, location: jobRow.location, postedAgo: jobRow.posted_ago, matchScore: jobRow.match_score, column: 'review', verdict: jobRow.verdict, matchesFound: jobRow.matches_found, missingOrWeak: jobRow.missing_or_weak, humanInputRequired: jobRow.human_input_required, sourceUrl: url }
+        } else {
+          newJob = { id: inserted.id, company: inserted.company, title: inserted.title, location: inserted.location, postedAgo: inserted.posted_ago, matchScore: inserted.match_score, column: inserted.column as ColumnId, verdict: inserted.verdict || '', matchesFound: inserted.matches_found || [], missingOrWeak: inserted.missing_or_weak || [], humanInputRequired: inserted.human_input_required || [], sourceUrl: inserted.source_url || url }
+        }
+      } else {
+        newJob = { id: `job-${Date.now()}`, company: jobRow.company, title: jobRow.title, location: jobRow.location, postedAgo: jobRow.posted_ago, matchScore: jobRow.match_score, column: 'review', verdict: jobRow.verdict, matchesFound: jobRow.matches_found, missingOrWeak: jobRow.missing_or_weak, humanInputRequired: jobRow.human_input_required, sourceUrl: url }
       }
 
       setJobs((prev) => [newJob, ...prev])
@@ -399,6 +459,11 @@ export default function Dashboard() {
           setJobs(prev => prev.map(j => j.id === id ? { ...j, needsInput: true, missingField } : j))
           setSelectedJob(prev => prev?.id === id ? { ...prev, needsInput: true, missingField } : prev)
           setGhostPulse(true)
+          // Persist the needs_input flag to Supabase
+          if (user) {
+            supabase.from('jobs').update({ needs_input: true, missing_field: missingField }).eq('id', id).eq('user_id', user.id)
+              .then(({ error }) => { if (error) console.error('[Dashboard] Failed to persist needs_input:', error.message) })
+          }
         }}
       />
     </div>

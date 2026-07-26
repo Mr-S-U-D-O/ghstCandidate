@@ -1,6 +1,6 @@
 import React, { useState, useContext, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UploadCloud, CheckCircle2, Loader2, X, AlertTriangle } from 'lucide-react'
+import { UploadCloud, CheckCircle2, Loader2, X } from 'lucide-react'
 import { UserContext } from '../context/UserContext'
 
 // ── Main Component ───────────────────────────────────────────────
@@ -38,7 +38,7 @@ export default function OnboardingFlow() {
   const [step, setStep] = useState(1)
   const totalSteps = 5
 
-  const { candidateProfile, setCandidateProfile } = useContext(UserContext)
+  const { candidateProfile, setCandidateProfile, syncProfile } = useContext(UserContext)
 
   // ── Step 1: Basics ─────────────────────────────────────────────
   const [nameInput, setNameInput] = useState(candidateProfile.name || '')
@@ -140,8 +140,9 @@ export default function OnboardingFlow() {
   }
 
   // ── Step 5: Completion ─────────────────────────────────────────
-  const handleFinish = () => {
-    // Navigate to dashboard
+  const handleFinish = async () => {
+    // Persist final profile to Supabase before navigating
+    await syncProfile()
     navigate('/dashboard')
   }
 

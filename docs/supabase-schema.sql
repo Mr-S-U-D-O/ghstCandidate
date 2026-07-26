@@ -64,8 +64,8 @@ CREATE TABLE IF NOT EXISTS public.jobs (
   location             text,
   posted_ago           text,
   match_score          integer DEFAULT 0,
-  column               text    DEFAULT 'review'
-                       CHECK (column IN ('discovered', 'review', 'applied')),
+  "column"             text    DEFAULT 'review'
+                       CHECK ("column" IN ('discovered', 'review', 'applied')),
   verdict              text,
   matches_found        jsonb   DEFAULT '[]'::jsonb,
   missing_or_weak      jsonb   DEFAULT '[]'::jsonb,

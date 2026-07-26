@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react'
 import { UserContext } from '../context/UserContext'
-import { Send, Loader2, Bot } from 'lucide-react'
+import { supabase } from '../supabaseClient'
+import { Send, Bot } from 'lucide-react'
 
 interface ChatMessage {
   role: 'user' | 'ghost'
@@ -8,11 +9,13 @@ interface ChatMessage {
 }
 
 export default function GhostChat() {
-  const { candidateProfile, setCandidateProfile } = useContext(UserContext)
+  const { user, candidateProfile, setCandidateProfile, syncProfile } = useContext(UserContext)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const hasInitialized = useRef(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -22,19 +25,53 @@ export default function GhostChat() {
     scrollToBottom()
   }, [messages, isTyping])
 
-  // Initial greeting
+  // Load chat history from Supabase on mount
   useEffect(() => {
-    if (messages.length === 0) {
-      sendMessage('', true)
+    if (!user) return
+
+    const loadHistory = async () => {
+      const { data, error } = await supabase
+        .from('chat_history')
+        .select('role, text')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('[GhostChat] Failed to load history:', error.message)
+        setIsLoadingHistory(false)
+        sendMessage('', true)
+        return
+      }
+
+      if (data && data.length > 0) {
+        setMessages(data as ChatMessage[])
+        setIsLoadingHistory(false)
+        hasInitialized.current = true
+      } else {
+        // No history — trigger an initial greeting
+        setIsLoadingHistory(false)
+        if (!hasInitialized.current) {
+          hasInitialized.current = true
+          sendMessage('', true)
+        }
+      }
     }
-  }, [])
+
+    loadHistory()
+  }, [user])
 
   const sendMessage = async (text: string, isInitial = false) => {
     if (!isInitial && !text.trim()) return
 
     const newMessages = isInitial ? [] : [...messages, { role: 'user', text } as ChatMessage]
-    if (!isInitial) setMessages(newMessages)
-    
+    if (!isInitial) {
+      setMessages(newMessages)
+      // Persist user message immediately
+      if (user) {
+        await supabase.from('chat_history').insert({ user_id: user.id, role: 'user', text })
+      }
+    }
+
     setInputValue('')
     setIsTyping(true)
 
@@ -50,14 +87,24 @@ export default function GhostChat() {
       })
 
       const data = await res.json()
-      
-      setMessages(prev => [...prev, { role: 'ghost', text: data.reply }])
+      const ghostMsg: ChatMessage = { role: 'ghost', text: data.reply }
+
+      setMessages(prev => [...prev, ghostMsg])
+
+      // Persist ghost reply
+      if (user) {
+        await supabase.from('chat_history').insert({ user_id: user.id, role: 'ghost', text: data.reply })
+      }
 
       if (data.profileUpdates && Object.keys(data.profileUpdates).length > 0) {
-        setCandidateProfile(p => ({ ...p, ...data.profileUpdates }))
+        const merged = { ...candidateProfile, ...data.profileUpdates }
+        setCandidateProfile(merged)
+        // Persist updated profile to Supabase
+        await syncProfile(merged)
       }
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'ghost', text: "I'm having trouble connecting to my brain. Please try again later." }])
+      const errorMsg: ChatMessage = { role: 'ghost', text: "I'm having trouble connecting to my brain. Please try again later." }
+      setMessages(prev => [...prev, errorMsg])
     } finally {
       setIsTyping(false)
     }
@@ -67,6 +114,19 @@ export default function GhostChat() {
     if (e.key === 'Enter') {
       sendMessage(inputValue)
     }
+  }
+
+  if (isLoadingHistory) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-200">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center animate-pulse">
+            <Bot size={16} className="text-white" />
+          </div>
+          <p className="font-sans text-sm text-gray-400">Loading conversation history...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
