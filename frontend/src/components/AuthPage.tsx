@@ -50,8 +50,8 @@ export default function AuthPage() {
 
       {/* --- Form Container --- */}
       <div
-        className={`absolute top-0 left-0 w-1/2 h-full flex flex-col items-center justify-center p-12 transition-transform duration-700 ease-in-out bg-white ${
-          isSignUp ? 'translate-x-0' : 'translate-x-full'
+        className={`absolute top-0 left-0 w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-12 transition-transform duration-700 ease-in-out bg-white ${
+          isSignUp ? 'translate-x-0' : 'translate-x-0 md:translate-x-full'
         }`}
       >
         <div className="w-full max-w-sm flex flex-col items-center">
@@ -100,7 +100,7 @@ export default function AuthPage() {
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
+                className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -112,7 +112,7 @@ export default function AuthPage() {
                 placeholder="••••••••"
                 required
                 minLength={6}
-                className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
+                className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
               />
             </div>
 
@@ -160,7 +160,7 @@ export default function AuthPage() {
 
       {/* --- Image/Graphic Container --- */}
       <div
-        className={`absolute top-0 left-0 w-1/2 h-full bg-[#0A0A0A] transition-all duration-700 ease-in-out flex flex-col items-center justify-center p-12 overflow-hidden ${
+        className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#0A0A0A] transition-all duration-700 ease-in-out flex-col items-center justify-center p-12 overflow-hidden ${
           isSignUp
             ? 'translate-x-full rounded-l-3xl'
             : 'translate-x-0 rounded-r-3xl'

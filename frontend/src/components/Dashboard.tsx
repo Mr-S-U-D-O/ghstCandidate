@@ -146,9 +146,13 @@ const NAV_ITEMS: { id: NavPage; label: string; Icon: React.ElementType }[] = [
   { id: "settings", label: "Ghost Settings", Icon: Settings },
 ]
 
-function Sidebar({ activePage, onNavigate, ghostPulse }: { activePage: NavPage; onNavigate: (p: NavPage) => void; ghostPulse?: boolean }) {
+function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose }: { activePage: NavPage; onNavigate: (p: NavPage) => void; ghostPulse?: boolean; isOpen?: boolean; onClose?: () => void }) {
   return (
-    <aside className="flex flex-col h-full bg-white border-r border-gray-200" style={{ width: "250px", minWidth: "250px" }}>
+    <>
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onClose} />
+      )}
+      <aside className={`fixed inset-y-0 left-0 z-50 flex flex-col h-full bg-white border-r border-gray-200 transition-transform transform md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{ width: "250px", minWidth: "250px" }}>
       <div className="p-6 border-b border-gray-100 flex items-center gap-1">
         <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto -mr-1.5" />
         <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight">ghstCandidate</span>
@@ -183,6 +187,7 @@ function Sidebar({ activePage, onNavigate, ghostPulse }: { activePage: NavPage; 
         </div>
       </div>
     </aside>
+    </>
   )
 }
 
@@ -231,6 +236,7 @@ export default function Dashboard() {
 
   // Hunter State
   const [isHunterMode, setIsHunterMode] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [hunterRole, setHunterRole] = useState("")
   const [hunterLocation, setHunterLocation] = useState("")
   const [hunterRunning, setHunterRunning] = useState(false)
@@ -440,10 +446,27 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
-      <Sidebar activePage={activePage} onNavigate={navigateTo} ghostPulse={ghostPulse} />
+    <div className="flex h-[100dvh] w-full bg-gray-50 overflow-hidden">
+      <Sidebar 
+        activePage={activePage} 
+        onNavigate={(p) => { navigateTo(p); setIsMobileMenuOpen(false); }} 
+        ghostPulse={ghostPulse} 
+        isOpen={isMobileMenuOpen} 
+        onClose={() => setIsMobileMenuOpen(false)} 
+      />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Mobile Header */}
+        <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 shrink-0">
+          <div className="flex items-center gap-2">
+            <img src="/logo-transparent.png" alt="Logo" className="h-6 w-auto" />
+            <span className="font-heading font-bold text-lg text-[#0A0A0A]">ghstCandidate</span>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-[#0A0A0A]">
+             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+        </div>
+
         {activePage === 'chat' ? (
           <div className="flex-1 p-8 h-full">
             <GhostChat />
@@ -451,10 +474,10 @@ export default function Dashboard() {
         ) : (
           <>
             {/* Top Action Bar */}
-            <header className="bg-white border-b border-gray-200 px-8 py-5 flex flex-col gap-3 shrink-0">
-              <div className="flex items-center justify-between gap-6">
-                <div className="flex items-center gap-4 shrink-0">
-                  <h1 className="font-heading font-bold text-2xl text-[#0A0A0A]">Job Tracker</h1>
+            <header className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-5 flex flex-col gap-3 shrink-0">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
+                <div className="flex items-center gap-4 shrink-0 justify-between md:justify-start">
+                  <h1 className="font-heading font-bold text-xl md:text-2xl text-[#0A0A0A]">Job Tracker</h1>
                   
                   {/* Mode Toggle */}
                   <div className="flex bg-gray-100 p-0.5 rounded-sm">
@@ -474,7 +497,7 @@ export default function Dashboard() {
                 </div>
 
                 {isHunterMode ? (
-                  <div className="flex-1 flex gap-3">
+                  <div className="flex-1 flex flex-col md:flex-row gap-3">
                     <div className="flex-1 relative">
                       <input
                         type="text"
@@ -485,7 +508,7 @@ export default function Dashboard() {
                         disabled={hunterRunning}
                       />
                     </div>
-                    <div className="w-48 relative">
+                    <div className="w-full md:w-48 relative">
                       <input
                         type="text"
                         value={hunterLocation}
@@ -507,7 +530,7 @@ export default function Dashboard() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex-1 flex gap-3">
+                  <div className="flex-1 flex flex-col md:flex-row gap-3">
                     <div className="flex-1 relative">
                       <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                       <input
@@ -544,17 +567,21 @@ export default function Dashboard() {
             </header>
 
             {/* Kanban Board */}
-            <div className="flex-1 overflow-hidden p-8">
-              <div className="grid grid-cols-3 gap-6 h-full">
+            <div className="flex-1 overflow-x-auto p-4 md:p-8">
+              <div className="flex gap-4 md:gap-6 h-full flex-nowrap min-w-max md:min-w-0 md:grid md:grid-cols-3 overflow-x-auto snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <style>{`
+                  div::-webkit-scrollbar { display: none; }
+                `}</style>
                 {COLUMNS.map((col) => (
-                  <KanbanColumn
-                    key={col.id}
-                    column={col}
-                    jobs={jobsByColumn(col.id)}
-                    onApprove={handleApprove}
-                    onReject={handleReject}
-                    onSelect={setSelectedJob}
-                  />
+                  <div key={col.id} className="w-[85vw] md:w-auto snap-center shrink-0 h-full">
+                    <KanbanColumn
+                      column={col}
+                      jobs={jobsByColumn(col.id)}
+                      onApprove={handleApprove}
+                      onReject={handleReject}
+                      onSelect={setSelectedJob}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

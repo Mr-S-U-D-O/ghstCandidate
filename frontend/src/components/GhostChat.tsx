@@ -173,7 +173,7 @@ export default function GhostChat() {
       </div>
 
       {/* Input */}
-      <div className="shrink-0 p-6 bg-white border-t border-gray-200">
+      <div className="shrink-0 p-4 pb-8 md:p-6 bg-white border-t border-gray-200">
         <div className="relative max-w-4xl mx-auto flex items-center">
           <input 
             type="text" 
@@ -182,7 +182,7 @@ export default function GhostChat() {
             onKeyDown={handleKeyDown}
             placeholder="Type your answer..."
             disabled={isTyping}
-            className="w-full bg-gray-50 border border-gray-200 text-black font-sans text-sm rounded-full pl-6 pr-14 py-4 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
+            className="w-full bg-gray-50 border border-gray-200 text-black font-sans text-base md:text-sm rounded-full pl-6 pr-14 py-4 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
           />
           <button 
             onClick={() => sendMessage(inputValue)}

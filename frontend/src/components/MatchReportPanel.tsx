@@ -115,9 +115,8 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
 
       {/* Slide-over Panel */}
       <div
-        className="fixed top-0 right-0 h-screen bg-white z-50 flex flex-col"
+        className="fixed top-0 right-0 h-screen w-full md:w-[600px] max-w-full bg-white z-50 flex flex-col"
         style={{
-          width: "600px",
           boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
           transform: isOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",

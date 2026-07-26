@@ -182,7 +182,7 @@ export default function OnboardingFlow() {
         </h2>
         <div
           onClick={handleUploadClick}
-          className={`w-full max-w-md h-64 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
+          className={`w-full max-w-md h-48 md:h-64 flex flex-col items-center justify-center p-6 text-center border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
             uploadState === 'idle'
               ? 'border-gray-300 hover:border-black hover:bg-gray-50'
               : uploadState === 'uploading'

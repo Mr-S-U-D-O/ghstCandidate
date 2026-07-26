@@ -123,12 +123,18 @@
   - [x] Jobs Kanban persistence to DB
   - [x] Chat history persistence to DB
 
-- [ ] **Phase 13: The Hunter (Automated Job Crawler)** *(Current)*
-  - [ ] Refactor jobController.ts for reusable Gemini logic
-  - [ ] Implement `POST /api/hunt-jobs` to scrape LinkedIn and process batch
-  - [ ] Insert discovered jobs directly to Supabase
-  - [ ] Update Dashboard UI with Hunter Mode toggle
-  - [ ] Wire Hunter UI to endpoint and refresh Kanban list
+- [x] **Phase 13: The Hunter (Automated Job Crawler)** *(Complete)*
+  - [x] Refactor jobController.ts for reusable Gemini logic
+  - [x] Implement `POST /api/hunt-jobs` to scrape LinkedIn and process batch
+  - [x] Insert discovered jobs directly to Supabase
+  - [x] Update Dashboard UI with Hunter Mode toggle
+  - [x] Wire Hunter UI to endpoint and refresh Kanban list
+
+- [x] **Phase 14: The Mobile Polish (Responsive UI/UX)** *(Complete)*
+  - [x] Refactor AuthPage & Onboarding flow for iOS zoom & small screens
+  - [x] Add mobile top navigation bar & slide-out Sidebar drawer
+  - [x] Convert Kanban board into a swipeable snap-scroll container
+  - [x] Ensure GhostChat and MatchReportPanel fill screen on mobile
 
 ---
 
