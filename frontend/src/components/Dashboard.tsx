@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import MatchReportPanel from "./MatchReportPanel"
+import GhostChat from "./GhostChat"
 import {
   LayoutDashboard,
   FileText,
@@ -12,6 +13,7 @@ import {
   Clock,
   AlertCircle,
   Loader2,
+  Bot
 } from "lucide-react"
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -32,6 +34,9 @@ export interface Job {
   missingOrWeak: string[]
   humanInputRequired: string[]
   sourceUrl?: string
+  // Phase 11: execution status
+  needsInput?: boolean
+  missingField?: string
 }
 
 // ── Hardcoded candidate profile (until auth/onboarding wires it) ──
@@ -57,7 +62,14 @@ const COLUMNS: { id: ColumnId; label: string; description: string }[] = [
 
 // ── Match Badge ───────────────────────────────────────────────────
 
-function MatchBadge({ score }: { score: number }) {
+function MatchBadge({ score, needsInput, missingField }: { score: number; needsInput?: boolean; missingField?: string }) {
+  if (needsInput && missingField) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium font-sans bg-amber-50 text-amber-700 border border-amber-200">
+        ⚠ Needs Input: {missingField}
+      </span>
+    )
+  }
   if (score >= 85) {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium font-sans bg-green-50 text-green-800 border border-green-100">
@@ -111,7 +123,7 @@ function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
       <p className="font-sans text-sm text-gray-700 leading-snug mb-1">{job.title}</p>
       <p className="font-sans text-xs text-gray-400 mb-4">{job.location}</p>
       <div className="flex items-center justify-between">
-        <MatchBadge score={job.matchScore} />
+        <MatchBadge score={job.matchScore} needsInput={job.needsInput} missingField={job.missingField} />
         {job.column === "review" && onApprove && onReject && (
           <div className="flex items-center gap-1.5">
             <button onClick={(e) => { e.stopPropagation(); onApprove(job.id) }} className="flex items-center gap-1 px-3 py-1.5 bg-[#0A0A0A] text-white text-xs font-sans font-medium rounded-sm hover:bg-gray-800 transition-colors">
@@ -135,28 +147,36 @@ function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
 
 // ── Sidebar ───────────────────────────────────────────────────────
 
-type NavPage = "dashboard" | "resumes" | "settings"
+type NavPage = "dashboard" | "chat" | "resumes" | "settings"
 
 const NAV_ITEMS: { id: NavPage; label: string; Icon: React.ElementType }[] = [
-  { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { id: "dashboard", label: "Job Tracker", Icon: LayoutDashboard },
+  { id: "chat", label: "Ghost Profiler", Icon: Bot },
   { id: "resumes", label: "Resumes", Icon: FileText },
   { id: "settings", label: "Ghost Settings", Icon: Settings },
 ]
 
-function Sidebar({ activePage, onNavigate }: { activePage: NavPage; onNavigate: (p: NavPage) => void }) {
+function Sidebar({ activePage, onNavigate, ghostPulse }: { activePage: NavPage; onNavigate: (p: NavPage) => void; ghostPulse?: boolean }) {
   return (
     <aside className="flex flex-col h-full bg-white border-r border-gray-200" style={{ width: "250px", minWidth: "250px" }}>
-      <div className="p-6 border-b border-gray-100 flex items-center gap-2">
-        <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto" />
+      <div className="p-6 border-b border-gray-100 flex items-center gap-1">
+        <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto -mr-1.5" />
         <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight">ghstCandidate</span>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {NAV_ITEMS.map(({ id, label, Icon }) => {
           const isActive = activePage === id
+          const isPulse = id === 'chat' && ghostPulse && !isActive
           return (
-            <button key={id} onClick={() => onNavigate(id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans font-medium transition-colors text-left ${isActive ? "bg-gray-100 text-[#0A0A0A]" : "text-gray-500 hover:text-[#0A0A0A] hover:bg-gray-50"}`}>
+            <button key={id} onClick={() => onNavigate(id)} className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans font-medium transition-colors text-left ${isActive ? "bg-gray-100 text-[#0A0A0A]" : "text-gray-500 hover:text-[#0A0A0A] hover:bg-gray-50"}`}>
               <Icon size={16} strokeWidth={isActive ? 2 : 1.5} className={isActive ? "text-[#0A0A0A]" : "text-gray-400"} />
               {label}
+              {isPulse && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+              )}
             </button>
           )
         })}
@@ -216,6 +236,12 @@ export default function Dashboard() {
   const [scraperRunning, setScraperRunning] = useState(false)
   const [scrapeError, setScrapeError] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [ghostPulse, setGhostPulse] = useState(false)
+
+  const navigateTo = (page: NavPage) => {
+    if (page === 'chat') setGhostPulse(false)
+    setActivePage(page)
+  }
 
   const handleApprove = (id: string) => {
     console.log("[Dashboard] handleApprove clicked for job ID:", id)
@@ -296,61 +322,69 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      <Sidebar activePage={activePage} onNavigate={navigateTo} ghostPulse={ghostPulse} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Top Action Bar */}
-        <header className="bg-white border-b border-gray-200 px-8 py-5 flex flex-col gap-3 shrink-0">
-          <div className="flex items-center justify-between gap-6">
-            <h1 className="font-heading font-bold text-2xl text-[#0A0A0A] shrink-0">Job Tracker</h1>
-            <div className="flex-1 max-w-xl relative">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
-              <input
-                type="url"
-                value={jobUrlInput}
-                onChange={(e) => { setJobUrlInput(e.target.value); setScrapeError(null) }}
-                onKeyDown={(e) => e.key === "Enter" && !scraperRunning && handleRunScraper()}
-                placeholder="Paste a job posting URL (e.g. linkedin.com/jobs/…)"
-                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#0A0A0A] transition-colors"
-                disabled={scraperRunning}
-              />
-            </div>
-            <button
-              onClick={handleRunScraper}
-              disabled={scraperRunning || !jobUrlInput.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
-            >
-              {scraperRunning
-                ? <><Loader2 size={13} strokeWidth={2} className="animate-spin" />Scraping & Analysing...</>
-                : <><Play size={13} strokeWidth={2} />Run AI Scraper</>
-              }
-            </button>
+        {activePage === 'chat' ? (
+          <div className="flex-1 p-8 h-full">
+            <GhostChat />
           </div>
+        ) : (
+          <>
+            {/* Top Action Bar */}
+            <header className="bg-white border-b border-gray-200 px-8 py-5 flex flex-col gap-3 shrink-0">
+              <div className="flex items-center justify-between gap-6">
+                <h1 className="font-heading font-bold text-2xl text-[#0A0A0A] shrink-0">Job Tracker</h1>
+                <div className="flex-1 max-w-xl relative">
+                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
+                  <input
+                    type="url"
+                    value={jobUrlInput}
+                    onChange={(e) => { setJobUrlInput(e.target.value); setScrapeError(null) }}
+                    onKeyDown={(e) => e.key === "Enter" && !scraperRunning && handleRunScraper()}
+                    placeholder="Paste a job posting URL (e.g. linkedin.com/jobs/…)"
+                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#0A0A0A] transition-colors"
+                    disabled={scraperRunning}
+                  />
+                </div>
+                <button
+                  onClick={handleRunScraper}
+                  disabled={scraperRunning || !jobUrlInput.trim()}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {scraperRunning
+                    ? <><Loader2 size={13} strokeWidth={2} className="animate-spin" />Scraping & Analysing...</>
+                    : <><Play size={13} strokeWidth={2} />Run AI Scraper</>
+                  }
+                </button>
+              </div>
 
-          {/* Error banner */}
-          {scrapeError && (
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded-sm">
-              <AlertCircle size={14} className="text-red-500 shrink-0" strokeWidth={1.5} />
-              <p className="font-sans text-xs text-red-700">{scrapeError}</p>
+              {/* Error banner */}
+              {scrapeError && (
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded-sm">
+                  <AlertCircle size={14} className="text-red-500 shrink-0" strokeWidth={1.5} />
+                  <p className="font-sans text-xs text-red-700">{scrapeError}</p>
+                </div>
+              )}
+            </header>
+
+            {/* Kanban Board */}
+            <div className="flex-1 overflow-hidden p-8">
+              <div className="grid grid-cols-3 gap-6 h-full">
+                {COLUMNS.map((col) => (
+                  <KanbanColumn
+                    key={col.id}
+                    column={col}
+                    jobs={jobsByColumn(col.id)}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    onSelect={setSelectedJob}
+                  />
+                ))}
+              </div>
             </div>
-          )}
-        </header>
-
-        {/* Kanban Board */}
-        <div className="flex-1 overflow-hidden p-8">
-          <div className="grid grid-cols-3 gap-6 h-full">
-            {COLUMNS.map((col) => (
-              <KanbanColumn
-                key={col.id}
-                column={col}
-                jobs={jobsByColumn(col.id)}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onSelect={setSelectedJob}
-              />
-            ))}
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Match Report Slide-over */}
@@ -360,6 +394,12 @@ export default function Dashboard() {
         onClose={() => setSelectedJob(null)}
         onApprove={(id) => { handleApprove(id); setSelectedJob(null) }}
         onReject={(id) => { handleReject(id); setSelectedJob(null) }}
+        onNeedsInput={(id, missingField) => {
+          console.log("[Dashboard] NEEDS_INPUT for job:", id, "missing:", missingField)
+          setJobs(prev => prev.map(j => j.id === id ? { ...j, needsInput: true, missingField } : j))
+          setSelectedJob(prev => prev?.id === id ? { ...prev, needsInput: true, missingField } : prev)
+          setGhostPulse(true)
+        }}
       />
     </div>
   )

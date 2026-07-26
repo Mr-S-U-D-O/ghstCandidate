@@ -1,14 +1,40 @@
 import { useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { supabase } from '../supabaseClient'
 
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    navigate('/onboarding')
+    setError(null)
+    setIsLoading(true)
+
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password })
+        if (error) throw error
+        // New user → onboarding
+        navigate('/onboarding')
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+        // Returning user → dashboard
+        navigate('/dashboard')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unknown error occurred.'
+      setError(message)
+      console.error('[AuthPage] Auth error:', message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -30,8 +56,8 @@ export default function AuthPage() {
       >
         <div className="w-full max-w-sm flex flex-col items-center">
           
-          <div className="flex items-center gap-2 mb-8">
-            <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto" />
+          <div className="flex items-center gap-1 mb-8">
+            <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto -mr-1.5" />
             <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight">ghstCandidate</span>
           </div>
           
@@ -44,7 +70,7 @@ export default function AuthPage() {
               }`}
             ></div>
             <button
-              onClick={() => setIsSignUp(true)}
+              onClick={() => { setIsSignUp(true); setError(null) }}
               className={`flex-1 text-center py-2 text-sm font-sans font-medium relative z-10 transition-colors ${
                 isSignUp ? 'text-black' : 'text-gray-500 hover:text-black'
               }`}
@@ -52,7 +78,7 @@ export default function AuthPage() {
               Sign Up
             </button>
             <button
-              onClick={() => setIsSignUp(false)}
+              onClick={() => { setIsSignUp(false); setError(null) }}
               className={`flex-1 text-center py-2 text-sm font-sans font-medium relative z-10 transition-colors ${
                 !isSignUp ? 'text-black' : 'text-gray-500 hover:text-black'
               }`}
@@ -70,7 +96,10 @@ export default function AuthPage() {
               <label className="font-sans text-xs font-medium text-gray-700">Email</label>
               <input
                 type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                required
                 className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
               />
             </div>
@@ -78,15 +107,31 @@ export default function AuthPage() {
               <label className="font-sans text-xs font-medium text-gray-700">Password</label>
               <input
                 type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
+                required
+                minLength={6}
                 className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
               />
             </div>
+
+            {/* Error message */}
+            {error && (
+              <p className="font-sans text-xs text-red-600 bg-red-50 border border-red-200 rounded-sm px-3 py-2">
+                {error}
+              </p>
+            )}
+
             <button
               type="submit"
-              className="mt-2 w-full bg-[#0A0A0A] text-white font-sans font-medium py-3 rounded-[2px] hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2"
+              disabled={isLoading}
+              className="mt-2 w-full bg-[#0A0A0A] text-white font-sans font-medium py-3 rounded-[2px] hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              {isSignUp ? 'Sign Up' : 'Log In'}
+              {isLoading
+                ? <><Loader2 size={15} className="animate-spin" /> Processing...</>
+                : isSignUp ? 'Sign Up' : 'Log In'
+              }
             </button>
           </form>
 

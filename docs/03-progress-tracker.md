@@ -94,12 +94,34 @@
   - [x] Fill form live using Playwright
   - [x] Update frontend MatchReportPanel button text
 
-- [ ] **Phase 9: AI CV Parsing & Global Context** *(Current)*
-  - [ ] Global React Context for CandidateProfile
-  - [ ] POST `/api/parse-cv` endpoint in backend
-  - [ ] Gemini Base64 multimodal parsing
-  - [ ] Frontend Base64 upload & API integration
-  - [ ] Auto-fill onboarding steps 3 & 4 with extracted data
+- [x] **Phase 9: AI CV Parsing & Global Context** *(Complete)*
+  - [x] Global React Context for CandidateProfile
+  - [x] POST `/api/parse-cv` endpoint in backend
+  - [x] Gemini Base64 multimodal parsing
+  - [x] Frontend Base64 upload & API integration
+  - [x] Auto-fill onboarding steps 3 & 4 with extracted data
+
+- [x] **Phase 10: Full-Screen Ghost Profiler (Chatbot)** *(Complete)*
+  - [x] Update UserContext for dynamic profiles
+  - [x] Create `/api/chat-profiler` endpoint
+  - [x] Build `GhostChat.tsx` UI with typing animations
+  - [x] Add Sidebar tab to toggle between Kanban and Chat
+
+- [x] **Phase 11: Autonomous Execution & Graceful Failure** *(Complete)*
+  - [x] Change Playwright to headless: true
+  - [x] Update Gemini prompt to flag UNKNOWN_REQUIRED_INPUT
+  - [x] Abort logic: 400 NEEDS_INPUT response when field is unknown
+  - [x] Frontend: "Needs Input" amber badge on Kanban card
+  - [x] Frontend: Ghost Profiler sidebar tab pulse animation
+
+- [ ] **Phase 12: Permanent Memory (Supabase Integration)** *(Current)*
+  - [ ] Supabase schema: profiles, jobs, chat_history tables
+  - [ ] Frontend & backend Supabase client initialization
+  - [ ] Supabase Auth replacing mock redirect
+  - [ ] Route protection via AuthGuard
+  - [ ] Profile sync to DB (onboarding + Ghost Profiler)
+  - [ ] Jobs Kanban persistence to DB
+  - [ ] Chat history persistence to DB
 
 ---
 

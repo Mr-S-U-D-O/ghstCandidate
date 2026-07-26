@@ -3,6 +3,7 @@ import cors from "cors"
 import dotenv from "dotenv"
 import { analyzeJob, applyJob } from "./controllers/jobController.js"
 import { parseCv } from "./controllers/cvController.js"
+import { chatProfiler } from "./controllers/chatController.js"
 
 // ── Load .env before anything else ────────────────────────────────
 dotenv.config()
@@ -36,6 +37,7 @@ app.get("/health", (_req, res) => {
 app.post("/api/analyze-job", analyzeJob)
 app.post("/api/apply-job", applyJob)
 app.post("/api/parse-cv", parseCv)
+app.post("/api/chat-profiler", chatProfiler)
 
 // 404 catch-all
 app.use((_req, res) => {

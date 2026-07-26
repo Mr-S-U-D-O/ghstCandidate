@@ -10,6 +10,7 @@ interface MatchReportPanelProps {
   onClose: () => void
   onApprove: (id: string) => void
   onReject: (id: string) => void
+  onNeedsInput: (id: string, missingField: string) => void
 }
 
 // ── Match Badge ───────────────────────────────────────────────────
@@ -38,7 +39,7 @@ function MatchBadgeLarge({ score }: { score: number }) {
 
 // ── Panel ─────────────────────────────────────────────────────────
 
-export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onReject }: MatchReportPanelProps) {
+export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onReject, onNeedsInput }: MatchReportPanelProps) {
   const [isApplying, setIsApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,11 +55,24 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jobUrl: job.sourceUrl || "https://example.com/mock-job",
-          candidateProfile: {} // Will use mock or real in backend later
+          candidateProfile: {}
         })
       })
-      if (!res.ok) throw new Error(await res.text())
-      
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.status === "NEEDS_INPUT" && data.missingField) {
+          // Graceful failure: flag the card and signal Ghost Profiler pulse
+          console.warn("[MatchReportPanel] NEEDS_INPUT — missing field:", data.missingField)
+          onNeedsInput(job.id, data.missingField)
+          setError(`Ghost blocked: "${data.missingField}" is required but missing from your profile. Visit Ghost Profiler to add it.`)
+        } else {
+          throw new Error(data.message ?? "API error")
+        }
+        return
+      }
+
       onApprove(job.id)
       onClose()
     } catch (err) {

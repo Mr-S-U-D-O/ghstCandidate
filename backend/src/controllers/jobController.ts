@@ -208,67 +208,72 @@ ${truncated}
 // ── Application Runner ─────────────────────────────────────────────
 
 export async function applyJob(req: Request, res: Response): Promise<void> {
+  const browser = await chromium.launch({ headless: true })
   try {
     const { jobUrl, candidateProfile } = req.body
 
     if (!jobUrl || typeof jobUrl !== "string") {
+      await browser.close()
       res.status(400).json({ error: "Bad Request", message: "A valid jobUrl is required." })
       return
     }
 
-    console.log(`[applyJob] Starting execution engine for: ${jobUrl}`)
+    console.log(`[applyJob] Starting headless execution engine for: ${jobUrl}`)
 
-    // 1. Launch Chromium in Visible Mode with slowMo
-    const browser = await chromium.launch({ headless: false, slowMo: 100 })
-    try {
-      const context = await browser.newContext({
-        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    const context = await browser.newContext({
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+    const page = await context.newPage()
+
+    // 1. Navigate to URL
+    console.log(`[applyJob] Navigating...`)
+    await page.goto(jobUrl, { waitUntil: "domcontentloaded", timeout: 30000 })
+
+    // 2. Blocker Detection (headless — log and continue, don't wait 60s)
+    const hasPassword = await page.$('input[type="password"]')
+    const iframes = await page.$$eval('iframe', frames => frames.map(f => f.src.toLowerCase()))
+    const hasCaptcha = iframes.some(src => src.includes('captcha') || src.includes('turnstile') || src.includes('challenge'))
+
+    if (hasPassword || hasCaptcha) {
+      console.warn(`[applyJob] Blocker detected (Password: ${!!hasPassword}, Captcha: ${hasCaptcha}). Aborting — cannot resolve in headless mode.`)
+      await browser.close()
+      res.status(400).json({
+        success: false,
+        status: "NEEDS_INPUT",
+        missingField: hasPassword ? "Login required — manual sign-in needed" : "CAPTCHA / challenge detected"
       })
-      const page = await context.newPage()
+      return
+    }
 
-      // 2. Navigate to URL
-      console.log(`[applyJob] Navigating...`)
-      await page.goto(jobUrl, { waitUntil: "domcontentloaded", timeout: 30000 })
-
-      // 3. Blocker Detection
-      const hasPassword = await page.$('input[type="password"]')
-      const iframes = await page.$$eval('iframe', frames => frames.map(f => f.src.toLowerCase()))
-      const hasCaptcha = iframes.some(src => src.includes('captcha') || src.includes('turnstile') || src.includes('challenge'))
-
-      if (hasPassword || hasCaptcha) {
-        console.warn(`[applyJob] Blocker detected (Password: ${!!hasPassword}, Captcha: ${hasCaptcha}). Waiting 60 seconds for manual user resolution in the browser...`)
-        await page.waitForTimeout(60000)
-      }
-
-      // 4. Extract Form Fields
-      console.log(`[applyJob] Extracting interactive form elements...`)
-      const fields = await page.$$eval('input[type="text"], input[type="email"], input[type="file"], textarea, select', elements => {
-        return elements.map(el => {
-          const id = el.id || ''
-          const name = (el as HTMLInputElement).name || ''
-          const type = (el as HTMLInputElement).type || el.tagName.toLowerCase()
-          let labelText = ''
-          if (id) {
-            const label = document.querySelector(`label[for="${id}"]`) as HTMLLabelElement
-            if (label) labelText = label.innerText.trim()
-          }
-          if (!labelText) {
-             const parentLabel = el.closest('label')
-             if (parentLabel) labelText = (parentLabel as HTMLLabelElement).innerText.trim()
-          }
-          return { id, name, type, label: labelText }
-        })
+    // 3. Extract Form Fields
+    console.log(`[applyJob] Extracting interactive form elements...`)
+    const fields = await page.$$eval('input[type="text"], input[type="email"], input[type="file"], textarea, select', elements => {
+      return elements.map(el => {
+        const id = el.id || ''
+        const name = (el as HTMLInputElement).name || ''
+        const type = (el as HTMLInputElement).type || el.tagName.toLowerCase()
+        let labelText = ''
+        if (id) {
+          const label = document.querySelector(`label[for="${id}"]`) as HTMLLabelElement
+          if (label) labelText = label.innerText.trim()
+        }
+        if (!labelText) {
+          const parentLabel = el.closest('label')
+          if (parentLabel) labelText = (parentLabel as HTMLLabelElement).innerText.trim()
+        }
+        return { id, name, type, label: labelText }
       })
-      console.log(`[applyJob] Extracted ${fields.length} fields.`)
+    })
+    console.log(`[applyJob] Extracted ${fields.length} fields.`)
 
-      // 5. Ask Gemini to map fields
-      let mappedActions: { elementName: string, value: string }[] = []
-      if (fields.length > 0) {
-        console.log(`[applyJob] Asking Gemini to map candidate profile to fields...`)
-        try {
-          const genAI = getGenAI()
-          const model = genAI.getGenerativeModel({
-            model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest", 
+    // 4. Ask Gemini to map fields — flag unknowns with sentinel value
+    let mappedActions: { elementName: string, value: string }[] = []
+    if (fields.length > 0) {
+      console.log(`[applyJob] Asking Gemini to map candidate profile to fields...`)
+      try {
+        const genAI = getGenAI()
+        const model = genAI.getGenerativeModel({
+          model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
           generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -284,64 +289,79 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
             } as any
           }
         })
+
         const prompt = `
 You are an expert form-filling AI.
 Candidate Profile: ${JSON.stringify(candidateProfile)}
 Extracted Form Fields: ${JSON.stringify(fields)}
 
-Map the candidate profile to the extracted fields. 
-Return a JSON array of objects with "elementName" (use the name or id from the fields) and "value" to type in. 
-If a field cannot be answered with the profile, omit it or guess reasonably (e.g. for checkboxes/dropdowns if appropriate).
+Map the candidate profile to the extracted fields.
+Return a JSON array of objects with "elementName" (use the name or id from the fields) and "value" to type in.
+IMPORTANT: If you CANNOT find the answer to a required field in the candidate profile, set its value to exactly the string "UNKNOWN_REQUIRED_INPUT".
+Do NOT skip fields — always include every field in your response.
 `.trim()
-          const result = await model.generateContent(prompt)
-          const rawText = result.response.text().trim()
-          mappedActions = JSON.parse(rawText)
-        } catch (e) {
-          console.error(`\x1b[31m[applyJob] AI Mapping Failed: ${(e as Error).message}\x1b[0m`)
-        }
+
+        const result = await model.generateContent(prompt)
+        const rawText = result.response.text().trim()
+        mappedActions = JSON.parse(rawText)
+        console.log(`[applyJob] Gemini returned ${mappedActions.length} mapped actions.`)
+      } catch (e) {
+        console.error(`\x1b[31m[applyJob] AI Mapping Failed: ${(e as Error).message}\x1b[0m`)
       }
-
-      // 6. Playwright Execution
-      console.log(`[applyJob] Executing form fills...`)
-      for (const action of mappedActions) {
-        if (!action.elementName) continue
-        try {
-          const selector = `[name="${action.elementName}"], #${action.elementName}`
-          const el = await page.$(selector)
-          if (el) {
-            const type = await el.evaluate(e => (e as HTMLInputElement).type)
-            if (type === 'file') {
-              await el.setInputFiles('uploads/dummy_resume.pdf', { timeout: 2000 })
-              console.log(`  - Uploaded dummy_resume.pdf to ${action.elementName}`)
-            } else {
-              await el.fill(action.value, { timeout: 2000 })
-              console.log(`  - Filled ${action.elementName} with "${action.value}"`)
-            }
-          } else {
-            console.warn(`  - Element not found for ${action.elementName}`)
-          }
-        } catch (e) {
-          console.warn(`  - Failed to fill ${action.elementName}:`, (e as Error).message)
-        }
-      }
-
-      // 7. Verification Pause
-      console.log(`[applyJob] Pausing for 5 seconds for visual verification...`)
-      await page.waitForTimeout(5000)
-
-    } finally {
-      await browser.close()
-      console.log(`[applyJob] Execution complete. Browser closed.`)
     }
 
-    res.status(200).json({ 
-      success: true, 
-      message: "The Ghost has successfully submitted your application." 
+    // 5. Abort Logic: Check for any UNKNOWN_REQUIRED_INPUT before touching the DOM
+    const unknownField = mappedActions.find(a => a.value === "UNKNOWN_REQUIRED_INPUT")
+    if (unknownField) {
+      const fieldLabel = unknownField.elementName
+      console.warn(`[applyJob] Aborting — cannot answer required field: "${fieldLabel}"`)
+      await browser.close()
+      res.status(400).json({
+        success: false,
+        status: "NEEDS_INPUT",
+        missingField: fieldLabel
+      })
+      return
+    }
+
+    // 6. All fields are answerable — execute fills
+    console.log(`[applyJob] All fields mapped. Executing form fills...`)
+    for (const action of mappedActions) {
+      if (!action.elementName) continue
+      try {
+        const selector = `[name="${action.elementName}"], #${action.elementName}`
+        const el = await page.$(selector)
+        if (el) {
+          const type = await el.evaluate(e => (e as HTMLInputElement).type)
+          if (type === 'file') {
+            await el.setInputFiles('uploads/dummy_resume.pdf', { timeout: 2000 })
+            console.log(`  - Uploaded dummy_resume.pdf to ${action.elementName}`)
+          } else {
+            await el.fill(action.value, { timeout: 2000 })
+            console.log(`  - Filled ${action.elementName} with "${action.value}"`)
+          }
+        } else {
+          console.warn(`  - Element not found for selector: ${action.elementName}`)
+        }
+      } catch (e) {
+        console.warn(`  - Failed to fill ${action.elementName}:`, (e as Error).message)
+      }
+    }
+
+    // 7. Brief pause then close
+    await page.waitForTimeout(2000)
+    await browser.close()
+    console.log(`[applyJob] Execution complete. Browser closed.`)
+
+    res.status(200).json({
+      success: true,
+      message: "The Ghost has successfully submitted your application."
     })
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error("[applyJob] Execution failed:", message)
+    try { await browser.close() } catch {}
     res.status(500).json({ error: "Internal Server Error", message })
   }
 }
