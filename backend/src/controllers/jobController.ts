@@ -245,13 +245,67 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
       return
     }
 
+    // 2.5 Generate Bespoke Documents
+    console.log(`[applyJob] Generating bespoke Resume and Cover Letter...`)
+    const jdText = await scrapeJobPage(jobUrl)
+    const docGenPrompt = `
+You are an expert resume and cover letter writer.
+Candidate Profile: ${JSON.stringify(candidateProfile)}
+Job Description: ${jdText.slice(0, 5000)}
+
+Generate a highly tailored Resume and a Cover Letter for this specific job.
+Return a JSON object with two keys: "resumeHtml" and "coverLetterHtml".
+STRICT STYLING REQUIREMENTS FOR HTML:
+- Minimalist, achromatic color palette (black, white, grays).
+- Whitespace dominant (high padding/margins).
+- No gradients, no emojis.
+- Headings MUST use 'Comfortaa' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap" rel="stylesheet">).
+- Body text MUST use 'Lato' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">).
+- Use inline styles or a <style> block.
+`.trim()
+
+    try {
+      const docGenAI = getGenAI()
+      const docModel = docGenAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: SchemaType.OBJECT,
+            properties: {
+              resumeHtml: { type: SchemaType.STRING },
+              coverLetterHtml: { type: SchemaType.STRING }
+            },
+            required: ["resumeHtml", "coverLetterHtml"]
+          } as any
+        }
+      })
+      const docResult = await docModel.generateContent(docGenPrompt)
+      const docs = JSON.parse(docResult.response.text().trim())
+      
+      const renderContext = await browser.newContext()
+      const renderPage = await renderContext.newPage()
+      
+      await renderPage.setContent(docs.resumeHtml, { waitUntil: "networkidle" })
+      await renderPage.pdf({ path: 'temp_resume.pdf', format: 'A4' })
+      
+      await renderPage.setContent(docs.coverLetterHtml, { waitUntil: "networkidle" })
+      await renderPage.pdf({ path: 'temp_cover_letter.pdf', format: 'A4' })
+      
+      await renderContext.close()
+      console.log(`[applyJob] Successfully generated temp_resume.pdf and temp_cover_letter.pdf`)
+    } catch (e) {
+      console.error(`[applyJob] Failed to generate bespoke documents:`, (e as Error).message)
+    }
+
     // 3. Extract Form Fields
     console.log(`[applyJob] Extracting interactive form elements...`)
-    const fields = await page.$$eval('input[type="text"], input[type="email"], input[type="file"], textarea, select', elements => {
+    const fields = await page.$$eval('input[type="text"], input[type="email"], input[type="file"], input[type="radio"], input[type="checkbox"], textarea, select', elements => {
       return elements.map(el => {
         const id = el.id || ''
         const name = (el as HTMLInputElement).name || ''
         const type = (el as HTMLInputElement).type || el.tagName.toLowerCase()
+        const value = (el as HTMLInputElement).value || ''
         let labelText = ''
         if (id) {
           const label = document.querySelector(`label[for="${id}"]`) as HTMLLabelElement
@@ -261,7 +315,7 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
           const parentLabel = el.closest('label')
           if (parentLabel) labelText = (parentLabel as HTMLLabelElement).innerText.trim()
         }
-        return { id, name, type, label: labelText }
+        return { id, name, type, value, label: labelText }
       })
     })
     console.log(`[applyJob] Extracted ${fields.length} fields.`)
@@ -329,13 +383,28 @@ Do NOT skip fields — always include every field in your response.
     for (const action of mappedActions) {
       if (!action.elementName) continue
       try {
+        // First try for radio/checkbox by specific value
+        const radioSelector = `input[name="${action.elementName}"][value="${action.value}"], input#${action.elementName}[value="${action.value}"]`
+        const radioEl = await page.$(radioSelector)
+        if (radioEl) {
+          const type = await radioEl.evaluate(e => (e as HTMLInputElement).type)
+          if (type === 'radio' || type === 'checkbox') {
+            await radioEl.check({ timeout: 2000 })
+            console.log(`  - Checked ${action.elementName} with value "${action.value}"`)
+            continue
+          }
+        }
+
+        // Fallback for regular inputs
         const selector = `[name="${action.elementName}"], #${action.elementName}`
         const el = await page.$(selector)
         if (el) {
           const type = await el.evaluate(e => (e as HTMLInputElement).type)
           if (type === 'file') {
-            await el.setInputFiles('uploads/dummy_resume.pdf', { timeout: 2000 })
-            console.log(`  - Uploaded dummy_resume.pdf to ${action.elementName}`)
+            const isCoverLetter = action.elementName.toLowerCase().includes('cover')
+            const fileToUpload = isCoverLetter ? 'temp_cover_letter.pdf' : 'temp_resume.pdf'
+            await el.setInputFiles(fileToUpload, { timeout: 2000 })
+            console.log(`  - Uploaded ${fileToUpload} to ${action.elementName}`)
           } else {
             await el.fill(action.value, { timeout: 2000 })
             console.log(`  - Filled ${action.elementName} with "${action.value}"`)
@@ -378,11 +447,7 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
 
   console.log(`[huntJobs] Starting hunt for '${searchRole}' in '${location}' for user ${userId}`)
 
-  // Search URL (LinkedIn Public Jobs)
-  const query = encodeURIComponent(searchRole)
-  const loc = encodeURIComponent(location)
-  const searchUrl = `https://www.linkedin.com/jobs/search?keywords=${query}&location=${loc}`
-
+  const atsDomains = ['boards.greenhouse.io', 'jobs.lever.co', 'apply.workable.com', 'jobs.ashbyhq.com']
   const browser = await chromium.launch({ headless: true })
   let discoveredCount = 0
 
@@ -392,14 +457,37 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
     })
     const page = await context.newPage()
     
-    console.log(`[huntJobs] Navigating to ${searchUrl}`)
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {})
+    console.log(`[huntJobs] Initiating sequential ATS Dorking searches on Bing...`)
+    
+    let allLinks: string[] = []
 
-    // Extract job links from the search page
-    // LinkedIn public search job links typically look like: /jobs/view/xyz or have base-card class
-    const jobLinks = await page.$$eval('a.base-card__full-link, a.job-search-card__title, a.result-card__full-card-link', (anchors) => 
-      anchors.map(a => (a as HTMLAnchorElement).href).slice(0, 3)
-    )
+    for (const domain of atsDomains) {
+      const dorkQuery = `${searchRole} ${location} site:${domain}`
+      const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(dorkQuery)}`
+      
+      try {
+        await page.setExtraHTTPHeaders({ 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' })
+        await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 15000 })
+        
+        const links = await page.$$eval(`li.b_algo h2 a, a[href*="${domain}"]`, (anchors) => 
+          anchors.map(a => (a as HTMLAnchorElement).href)
+        )
+        // Add top 3 links from this domain search
+        allLinks = allLinks.concat(links.slice(0, 3))
+        
+        // Manual delay for anti-spam evasion
+        await page.waitForTimeout(3000)
+      } catch (err) {
+        console.error(`[huntJobs] Error scraping Bing for ${domain}:`, err)
+      }
+    }
+    
+    await page.close().catch(() => {})
+
+    // Filter to ensure they are target ATS domains and limit to top 5
+    const jobLinks = Array.from(new Set(allLinks)) // Deduplicate
+      .filter(href => atsDomains.some(domain => href.includes(domain)))
+      .slice(0, 5)
 
     console.log(`[huntJobs] Found ${jobLinks.length} job links to process.`)
 
@@ -409,15 +497,7 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
         const jobPage = await context.newPage()
         await jobPage.goto(jobUrl, { waitUntil: "domcontentloaded", timeout: 10000 }).catch(() => {})
         
-        // Try to click "Show more" to expand description if it exists
-        const showMoreBtn = await jobPage.$('button.show-more-less-html__button')
-        if (showMoreBtn) {
-           await showMoreBtn.click().catch(() => {})
-           await jobPage.waitForTimeout(500)
-        }
-
-        // Extract description text
-        // Usually inside .show-more-less-html__markup or similar, but document.body is a safe fallback
+        // Extract description text from direct ATS page
         const text = await jobPage.$eval('body', el => (el as HTMLElement).innerText).catch(() => "")
         await jobPage.close()
 

@@ -45,9 +45,12 @@ app.use((_req, res) => {
   res.status(404).json({ error: "Not Found" })
 })
 
+import { initCron } from "./cron.js"
+
 // ── Start ──────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n  ghstCandidate backend running`)
   console.log(`  http://localhost:${PORT}`)
   console.log(`  POST /api/analyze-job\n`)
+  initCron()
 })

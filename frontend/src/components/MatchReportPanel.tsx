@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { X, FileText, Check, AlertTriangle, MapPin, Clock, ExternalLink, Loader2 } from "lucide-react"
 import type { Job } from "./Dashboard"
+import { UserContext } from "../context/UserContext"
 
 // ── Props ─────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ function MatchBadgeLarge({ score }: { score: number }) {
 // ── Panel ─────────────────────────────────────────────────────────
 
 export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onReject, onNeedsInput }: MatchReportPanelProps) {
+  const { candidateProfile } = React.useContext(UserContext)
   const [isApplying, setIsApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,7 +57,7 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jobUrl: job.sourceUrl || "https://example.com/mock-job",
-          candidateProfile: {}
+          candidateProfile: candidateProfile || {}
         })
       })
 

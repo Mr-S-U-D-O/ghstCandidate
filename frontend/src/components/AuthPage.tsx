@@ -1,15 +1,42 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import authVideo from '../assets/auth-bg.mp4'
+
+const PLACEHOLDERS = [
+  { email: 'alex@react.dev', password: 'frontend_wizard_2026' },
+  { email: 'jane@startup.io', password: 'deploy_to_prod_!' },
+  { email: 'sam@nextjs.com', password: 'server_components_123' },
+  { email: 'founder@unicorn.io', password: 'series_a_funding' }
+]
 
 export default function AuthPage() {
-  const [isSignUp, setIsSignUp] = useState(true)
+  const [searchParams] = useSearchParams()
+  const mode = searchParams.get('mode')
+  
+  const [isSignUp, setIsSignUp] = useState(mode === 'login' ? false : true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [oAuthLoading, setOAuthLoading] = useState<'google' | 'linkedin_oidc' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  
+  const [placeholders, setPlaceholders] = useState(PLACEHOLDERS[0])
+  
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const rand = Math.floor(Math.random() * PLACEHOLDERS.length)
+    setPlaceholders(PLACEHOLDERS[rand])
+  }, [])
+
+  const getFriendlyErrorMessage = (msg: string) => {
+    if (msg.includes('already registered')) return 'This email is already hunting jobs. Try logging in instead.'
+    if (msg.includes('Invalid login credentials')) return 'Incorrect email or password. Please try again.'
+    if (msg.includes('least 6 characters')) return 'Your password needs to be at least 6 characters.'
+    return msg
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,23 +57,38 @@ export default function AuthPage() {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unknown error occurred.'
-      setError(message)
+      setError(getFriendlyErrorMessage(message))
       console.error('[AuthPage] Auth error:', message)
     } finally {
       setIsLoading(false)
     }
   }
 
+  const handleOAuth = async (provider: 'google' | 'linkedin_oidc') => {
+    setError(null)
+    setOAuthLoading(provider)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider })
+      if (error) throw error
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unknown error occurred.'
+      setError(getFriendlyErrorMessage(message))
+      setOAuthLoading(null)
+    }
+  }
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-white text-[#0A0A0A]">
-      {/* Back to Home Link */}
-      <Link
-        to="/"
-        className="absolute top-6 left-6 z-50 flex items-center gap-2 text-sm font-sans font-medium text-gray-500 hover:text-black transition-colors"
-      >
-        <ArrowLeft size={16} />
-        Back
-      </Link>
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          75% { transform: translateX(4px); }
+        }
+        .animate-shake {
+          animation: shake 0.3s ease-in-out;
+        }
+      `}</style>
 
       {/* --- Form Container --- */}
       <div
@@ -54,6 +96,14 @@ export default function AuthPage() {
           isSignUp ? 'translate-x-0' : 'translate-x-0 md:translate-x-full'
         }`}
       >
+        {/* Back to Home Link - Roaming */}
+        <Link
+          to="/"
+          className="absolute top-6 left-6 z-50 flex items-center gap-2 text-sm font-sans font-medium text-gray-500 hover:text-black transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Link>
         <div className="w-full max-w-sm flex flex-col items-center">
           
           <div className="flex items-center gap-1 mb-8">
@@ -98,7 +148,7 @@ export default function AuthPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={placeholders.email}
                 required
                 className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
               />
@@ -109,7 +159,7 @@ export default function AuthPage() {
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={placeholders.password}
                 required
                 minLength={6}
                 className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
@@ -118,9 +168,12 @@ export default function AuthPage() {
 
             {/* Error message */}
             {error && (
-              <p className="font-sans text-xs text-red-600 bg-red-50 border border-red-200 rounded-sm px-3 py-2">
-                {error}
-              </p>
+              <div className="animate-shake font-sans text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-3 mb-1 flex items-start gap-2 shadow-sm">
+                <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium">{error}</span>
+              </div>
             )}
 
             <button
@@ -142,23 +195,37 @@ export default function AuthPage() {
           </div>
 
           <div className="w-full flex flex-col gap-3">
-            <button className="w-full border border-gray-300 rounded-[2px] bg-white px-4 py-2.5 font-sans text-sm font-medium text-[#0A0A0A] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-              </svg>
+            <button
+              type="button"
+              onClick={() => handleOAuth('google')}
+              disabled={!!oAuthLoading}
+              className="w-full border border-gray-300 rounded-[2px] bg-white px-4 py-2.5 font-sans text-sm font-medium text-[#0A0A0A] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {oAuthLoading === 'google' ? <Loader2 size={15} className="animate-spin" /> : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                </svg>
+              )}
               Continue with Google
             </button>
-            <button className="w-full border border-gray-300 rounded-[2px] bg-white px-4 py-2.5 font-sans text-sm font-medium text-[#0A0A0A] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-              </svg>
+            <button
+              type="button"
+              onClick={() => handleOAuth('linkedin_oidc')}
+              disabled={!!oAuthLoading}
+              className="w-full border border-gray-300 rounded-[2px] bg-white px-4 py-2.5 font-sans text-sm font-medium text-[#0A0A0A] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {oAuthLoading === 'linkedin_oidc' ? <Loader2 size={15} className="animate-spin" /> : (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              )}
               Continue with LinkedIn
             </button>
           </div>
         </div>
       </div>
 
-      {/* --- Image/Graphic Container --- */}
+      {/* --- Image/Graphic Container with Cinematic Video Background --- */}
       <div
         className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#0A0A0A] transition-all duration-700 ease-in-out flex-col items-center justify-center p-12 overflow-hidden ${
           isSignUp
@@ -166,21 +233,15 @@ export default function AuthPage() {
             : 'translate-x-0 rounded-r-3xl'
         }`}
       >
-        <div className="relative z-10 max-w-md text-center">
-          <h2 className="font-heading font-bold text-4xl text-white mb-6 leading-tight">
-            The silent engine<br />for your career.
-          </h2>
-          <p className="font-sans text-lg text-gray-400">
-            Let the Ghost worker handle the grind. You focus on the conversations that matter.
-          </p>
-        </div>
-        
-        {/* Abstract structural visual behind text */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
-          <div className="w-[800px] h-[800px] border-[40px] border-white rounded-full"></div>
-          <div className="absolute w-[600px] h-[600px] border-[2px] border-white rounded-full"></div>
-          <div className="absolute w-[400px] h-[400px] border-[1px] border-white rounded-full"></div>
-        </div>
+        <video
+          src={authVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
       </div>
 
     </div>

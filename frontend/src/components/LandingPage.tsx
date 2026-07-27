@@ -20,8 +20,8 @@ const Button = ({ variant = 'primary', size = 'md', to, className = '', children
     'inline-flex items-center gap-2 font-sans font-medium tracking-tight transition-colors duration-150 cursor-pointer border focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 rounded-full'
 
   const variants = {
-    primary: 'bg-[#0A0A0A] !text-white border-transparent hover:bg-[#374151]',
-    ghost: 'bg-transparent !text-[#374151] border-transparent hover:!text-black',
+    primary: 'bg-[#0A0A0A] !text-white border-transparent hover:bg-orange-500',
+    ghost: 'bg-transparent !text-[#374151] border-transparent hover:!text-orange-500',
   }
 
   const sizes = {
@@ -54,14 +54,14 @@ const Nav = () => (
       <div className="flex items-center gap-1">
         <img src="/logo-transparent.png" alt="ghstCandidate Logo" className="h-8 w-auto -mr-1.5" />
         <span className="font-heading font-bold text-xl text-[#0A0A0A] tracking-tight select-none">
-          ghstCandidate
+          <span className="text-orange-500">ghst</span>Candidate
         </span>
       </div>
 
       {/* Actions */}
       <nav className="flex items-center gap-1" aria-label="Main navigation">
-        <Button variant="ghost" size="sm" to="/auth">Log in</Button>
-        <Button variant="primary" size="sm" to="/auth">Sign up</Button>
+        <Button variant="ghost" size="sm" to="/auth?mode=login">Log in</Button>
+        <Button variant="primary" size="sm" to="/auth?mode=signup">Sign up</Button>
       </nav>
     </div>
   </header>
@@ -85,14 +85,16 @@ const Hero = () => (
       </h1>
 
       {/* Subheading */}
-      <p className="font-sans text-center mx-auto text-balance text-lg md:text-xl text-gray-500 max-w-2xl mt-8 leading-relaxed">
-        ghstCandidate monitors 50,000+ career pages and submits a tailored
-        resume the moment a perfect role opens.
-      </p>
+      <div className="mt-6 flex justify-center w-full">
+        <p className="font-sans text-center mx-auto text-balance text-lg md:text-xl text-gray-500 max-w-2xl mt-8 leading-relaxed">
+          ghstCandidate monitors 50,000+ career pages and submits a tailored
+          resume the moment a perfect role opens.
+        </p>
+      </div>
 
       {/* CTA */}
       <div className="mt-10 flex flex-col items-center justify-center gap-3">
-        <Button variant="primary" size="lg" to="/auth">
+        <Button variant="primary" size="lg" to="/auth?mode=signup">
           Get Started
           <ArrowRight size={16} strokeWidth={2} />
         </Button>
@@ -177,14 +179,17 @@ const Hero = () => (
 // ── 3. Social Proof Band ─────────────────────────────────────────
 
 const LOGOS = [
-  { name: 'Stripe', path: 'M11.988 5.533c-3.376 0-5.83 1.76-5.83 5.093 0 5.485 7.857 4.545 7.857 7.025 0 .973-.96 1.636-2.228 1.636-1.554 0-2.883-.563-4.004-1.39l-1.045 4.385c1.472.784 3.393 1.18 5.253 1.18 3.666 0 6.042-1.745 6.042-5.187 0-5.59-7.857-4.63-7.857-7.07 0-.82.804-1.467 2.058-1.467 1.34 0 2.51.468 3.486 1.116l.995-4.248c-1.36-.622-3.056-1.073-4.727-1.073z' },
-  { name: 'Vercel', path: 'M12 1L24 22H0L12 1Z' },
-  { name: 'Meta', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z' },
-  { name: 'Netflix', path: 'M6 2h3v20H6V2zm9 0h3v20h-3V2z' },
-  { name: 'Figma', path: 'M8 6a4 4 0 0 1 4-4h4a4 4 0 0 1 0 8h-4v8a4 4 0 0 1-8 0 4 4 0 0 1 4-4h4V6H8z' },
-  { name: 'Linear', path: 'M12 2L2 12l10 10 10-10L12 2z' },
-  { name: 'Google', path: 'M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2c2.69 0 4.96.98 6.7 2.58l-2.66 2.6c-1.04-.97-2.45-1.56-4.04-1.56-3.25 0-5.91 2.63-5.91 5.88s2.66 5.88 5.91 5.88c2.95 0 4.88-1.78 5.46-3.9H12v-3.5h9.11c.1.58.15 1.2.15 1.83 0 4.88-3.28 8.27-9.26 8.27z' },
-  { name: 'OpenAI', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z' }
+  { name: 'Apple', src: '/brand-logos/apple-11.svg' },
+  { name: 'FedEx', src: '/brand-logos/fedex-express-6.svg' },
+  { name: 'Figma', src: '/brand-logos/figma-svgrepo-com.svg' },
+  { name: 'Google', src: '/brand-logos/google-logo-search-new-svgrepo-com.svg' },
+  { name: 'McDonalds', src: '/brand-logos/mcdonalds-6.svg' },
+  { name: 'Meta', src: '/brand-logos/meta-3.svg' },
+  { name: 'Microsoft', src: '/brand-logos/microsoft-6.svg' },
+  { name: 'Netflix', src: '/brand-logos/netflix-2-logo-svgrepo-com.svg' },
+  { name: 'OpenAI', src: '/brand-logos/openai-logo-1.svg' },
+  { name: 'Shell', src: '/brand-logos/shell-4.svg' },
+  { name: 'Stripe', src: '/brand-logos/stripe-svgrepo-com.svg' }
 ]
 
 const SocialProofBand = () => (
@@ -210,13 +215,12 @@ const SocialProofBand = () => (
     <div className="w-full inline-flex flex-nowrap overflow-hidden [mask-image:_linear-gradient(to_right,transparent_0,_black_128px,_black_calc(100%-128px),transparent_100%)]">
       <div className="flex animate-marquee items-center justify-center gap-16 md:gap-24 w-max px-8">
         {[...LOGOS, ...LOGOS].map((logo, i) => (
-          <div key={i} className="flex flex-col items-center justify-center gap-3 w-20">
-            <svg viewBox="0 0 24 24" className="w-8 h-8 text-gray-300" fill="currentColor">
-              <path d={logo.path} />
-            </svg>
-            <span className="font-sans font-bold text-sm text-gray-300 select-none">
-              {logo.name}
-            </span>
+          <div key={i} className="flex flex-col items-center justify-center w-32 shrink-0">
+            <img 
+              src={logo.src} 
+              alt={logo.name}
+              className="h-8 w-auto object-contain grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+            />
           </div>
         ))}
       </div>
@@ -234,7 +238,7 @@ interface WorkCardProps {
 
 const WorkCard = ({ step, title, body }: WorkCardProps) => (
   <div className="border border-gray-200 bg-white rounded-xl p-8 flex flex-col gap-4 transition-shadow duration-200 hover:shadow-md">
-    <span className="font-sans text-xs font-medium text-gray-400 uppercase tracking-widest">
+    <span className="font-sans text-xs font-medium text-orange-500 uppercase tracking-widest">
       {step}
     </span>
     <h3 className="font-heading font-bold text-lg text-[#0A0A0A] leading-snug">{title}</h3>
@@ -302,7 +306,7 @@ const HumanInTheLoop = () => (
             'Ghost resumes the application exactly where it paused',
           ].map((item) => (
             <li key={item} className="flex items-start gap-2.5 font-sans text-sm text-gray-500">
-              <CheckCircle2 size={15} strokeWidth={2} className="text-[#0A0A0A] mt-0.5 shrink-0" />
+              <CheckCircle2 size={15} strokeWidth={2} className="text-orange-500 mt-0.5 shrink-0" />
               {item}
             </li>
           ))}
@@ -366,33 +370,37 @@ const FinalCTA = () => (
         <br />
         Start taking interviews.
       </h2>
-      <p className="font-sans text-center mx-auto text-balance text-base text-gray-500 mt-6 max-w-xl leading-relaxed">
-        Join thousands of candidates who let their Ghost handle the grind while
-        they focus on what matters — the conversations.
-      </p>
+      <div className="mt-6 flex justify-center w-full">
+        <p className="font-sans text-center text-balance text-base text-gray-500 max-w-xl leading-relaxed">
+          Join thousands of candidates who let their Ghost handle the grind
+          while they focus on what matters — the conversations.
+        </p>
+      </div>
       <div className="mt-10 flex justify-center">
-        <Button variant="primary" size="lg" to="/auth">
+        <Button variant="primary" size="lg" to="/auth?mode=signup">
           Start Your Free Trial
           <ArrowRight size={16} strokeWidth={2} />
         </Button>
       </div>
     </div>
   </section>
-)
+);
 
 // ── Footer ───────────────────────────────────────────────────────
 
 const Footer = () => (
   <footer className="border-t border-gray-100 py-10 px-6">
     <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-      <span className="font-heading font-bold text-sm text-[#0A0A0A]">ghstCandidate</span>
+      <span className="font-heading font-bold text-sm text-[#0A0A0A]">
+        <span className="text-orange-500">ghst</span>Candidate
+      </span>
 
       <nav className="flex items-center gap-6" aria-label="Footer navigation">
         {['Privacy', 'Terms', 'Contact'].map((link) => (
           <a
             key={link}
             href="#"
-            className="font-sans text-xs text-gray-400 hover:text-[#0A0A0A] transition-colors"
+            className="font-sans text-xs text-gray-400 hover:text-orange-500 transition-colors"
           >
             {link}
           </a>

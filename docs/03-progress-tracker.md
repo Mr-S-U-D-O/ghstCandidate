@@ -136,6 +136,29 @@
   - [x] Convert Kanban board into a swipeable snap-scroll container
   - [x] Ensure GhostChat and MatchReportPanel fill screen on mobile
 
+- [x] **Phase 15: The Autonomous Execution Engine** *(Complete)*
+  - [x] Fix memory leak in `MatchReportPanel.tsx` (inject `candidateProfile`)
+  - [x] Expand DOM Extraction to include radio/checkbox inputs
+  - [x] Bespoke PDF Document Generation via Gemini and Playwright
+  - [x] Implement `cron.ts` for 24/7 background loop with auto-apply
+
+- [x] **Phase 15.1: The ATS Sniper (Search Engine Dorking)** *(Complete)*
+  - [x] Deprecate LinkedIn scraping in Hunter
+  - [x] DuckDuckGo Dorking logic for Greenhouse, Lever, Workable, Ashby
+  - [x] Extract and filter organic search results
+  - [x] Direct ATS scraping for analysis
+
+- [x] **Phase 15.2: ATS Sniper Dorking Fix (Parallel Execution)** *(Complete)*
+  - [x] Refactor `huntJobs` query to avoid strict quotes and `OR` logic
+  - [x] Run DuckDuckGo searches in parallel (`Promise.allSettled`) for all ATS domains
+  - [x] Aggregate organic results, deduplicate, filter, and proceed to ATS scraping
+
+- [x] **Phase 15.3: ATS Sniper Evasion Patch** *(Complete)*
+  - [x] Switch to Bing Search engine
+  - [x] Apply stealth headers (`User-Agent`)
+  - [x] Revert to sequential execution with manual anti-spam delays
+  - [x] Update DOM extraction for Bing's HTML structure
+
 ---
 
 ## Notes
