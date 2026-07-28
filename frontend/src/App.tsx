@@ -9,8 +9,8 @@ import { UserProvider, useUser } from './context/UserContext'
 // Protects routes that require a valid Supabase session.
 // Shows nothing until auth state is known (avoids flash of wrong page).
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoadingAuth } = useUser()
+function AuthGuard({ children, requireProfile = false, blockIfProfile = false }: { children: React.ReactNode, requireProfile?: boolean, blockIfProfile?: boolean }) {
+  const { user, isLoadingAuth, hasProfile } = useUser()
   const location = useLocation()
 
   if (isLoadingAuth) {
@@ -28,6 +28,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return <Navigate to="/auth" state={{ from: location }} replace />
   }
 
+  if (requireProfile && !hasProfile) {
+    return <Navigate to="/onboarding" replace />
+  }
+
+  if (blockIfProfile && hasProfile) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return <>{children}</>
 }
 
@@ -39,12 +47,12 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/onboarding" element={
-        <AuthGuard>
+        <AuthGuard blockIfProfile>
           <OnboardingFlow />
         </AuthGuard>
       } />
       <Route path="/dashboard" element={
-        <AuthGuard>
+        <AuthGuard requireProfile>
           <Dashboard />
         </AuthGuard>
       } />

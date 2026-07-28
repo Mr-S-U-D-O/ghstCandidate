@@ -159,6 +159,97 @@
   - [x] Revert to sequential execution with manual anti-spam delays
   - [x] Update DOM extraction for Bing's HTML structure
 
+- [x] **Phase 15.4: Real-Time Execution Visibility & Debugging** *(Complete)*
+  - [x] Implement `.env` `HEADLESS=false` toggle with `slowMo`
+  - [x] Add granular logging to sequential Bing loops
+  - [x] Add cycling progress indicator in frontend Dashboard
+
+- [x] **Phase 16.0: The Purge & API Data Lake Foundation** *(Complete)*
+  - [x] Clean House (Remove search engine web scraping from `huntJobs`)
+  - [x] The Data Lake Database Schema (Create `global_jobs` table in Supabase)
+  - [x] The Unified API Adapter Model (Define `NormalizedJob` and adapter stubs)
+  - [x] Environment Configuration (Add new API keys to `.env.example`)
+
+- [x] **Phase 16.1: The JSearch Adapter & Data Lake Insertion** *(Complete)*
+  - [x] Implement the JSearch Adapter
+  - [x] Connect the "Cold Start" to `huntJobs`
+
+- [x] **Phase 16.2: Expanding the Data Lake (Reed & TheirStack Adapters)** *(Complete)*
+  - [x] Implement the Reed.co.uk Adapter
+  - [x] Implement the TheirStack Adapter
+  - [x] The Pacing Engine (Smart Fallback)
+
+- [x] **Phase 16.4: Adding Indeed Scraper API to the Data Lake** *(Complete)*
+  - [x] Implement the Indeed Adapter
+  - [x] Update the Fallback Engine
+  - [x] Environment Configuration
+
+- [x] **Phase 17.0: The Gemini Evaluation Engine** *(Complete)*
+  - [x] Fetching Un-Evaluated Jobs
+  - [x] Gemini Scoring Loop
+  - [x] Kanban Board Insertion
+
+- [x] **Phase 17.1: Smart Data Lake Routing & Fuzzy Search Fix** *(Complete)*
+  - [x] Build the Exclusion List
+  - [x] Check the Data Lake (Fuzzy Search)
+  - [x] Trigger External APIs (If < 5 jobs found)
+  - [x] Gemini Evaluation
+
+- [x] **Phase 17.2: Fix Kanban Payload Schema** *(Complete)*
+  - [x] Remove 'description' from Kanban insert payload
+
+- [x] **Phase 18.0: Auth Guard Fix & Candidate Identity / AI Memory Hub** *(Complete)*
+  - [x] Auth Guard & Direct Navigation Fix
+  - [x] Database Schema: Candidate Memory & Documents
+  - [x] Candidate Identity & AI Memory View (`ProfileHub.tsx`)
+  - [x] Navigation Link
+
+- [/] **Phase 19.0: Comprehensive System Audit & Flow Architecture** *(Complete)*
+  - [x] Full source audit across all routes, controllers, and context
+  - [x] `docs/04-system-audit-and-flow.md` generated
+
+- [x] **Phase 19.1: Document Hub UI, Cover Letter Onboarding & Core Patches** *(Complete)*
+  - [x] Core: Replace hardcoded `localhost:3001` with `VITE_API_BASE_URL` across all frontend components
+  - [x] Core: Fix sidebar user display — wire to `candidateProfile.name`
+  - [x] Core: Add Cover Letters to sidebar navigation
+  - [x] Core: Inject `candidate_memories` into Gemini scoring prompts (`analyzeJobText`)
+  - [x] Core: Inject `candidate_memories` into document generation prompt (`applyJob`)
+  - [x] Database: Add `raw_cover_letter_text` to `profiles` table
+  - [x] Database: Add `changes_made` and `reasoning` to `generated_docs` table
+  - [x] Onboarding: Add Step 3 — Cover Letter upload (6 steps total, shifted roles/location)
+  - [x] `UserContext`: Add `rawCoverLetterText` field and sync to Supabase
+  - [x] Create `ResumesPage.tsx` with Original CV accordion and Tailored Resumes vault
+  - [x] Create `CoverLettersPage.tsx` with Original CL accordion and Tailored CL vault
+  - [x] Dashboard: Route `resumes` and `cover_letters` nav items to new pages
+  - [x] Gemini docgen: Return `changes_made` + `reasoning` alongside HTML
+  - [x] `applyJob`: Write `generated_docs` rows with metadata on generation
+  - [x] Pass `userId` and `jobMeta` from `MatchReportPanel` to apply-job API
+
+- [x] **Phase 19.2: Cloud Storage Integration (The Document Vault)** *(Complete)*
+  - [x] Backend: Upload PDFs directly to Supabase Storage (`documents` bucket) instead of local filesystem
+  - [x] Backend: Save the public Supabase URL to `file_path` in `generated_docs`
+  - [x] Backend: Pass the raw `Buffer` directly to Playwright's `setInputFiles` for form filling
+  - [x] Frontend: Update `ResumesPage.tsx` and `CoverLettersPage.tsx` download buttons to directly open the public `file_path` URL
+
+- [x] **Phase 20.0: Global Verbose Logging, Storage Pipeline Seal, & Engine Decoupling** *(Complete)*
+  - [x] System-Wide Verbose Logging (Mandatory Across All Controllers)
+  - [x] Decouple Document Generation from Auto-Apply Form Filling (`applyJob` refactor)
+  - [x] Robust Supabase Storage & DB Insertion with Explicit Error Catches
+
+- [x] **Phase 20.1: Backend Supabase Auth Context Fix (RLS Bypass)** *(Complete)*
+  - [x] Extract JWT from request headers in `applyJob` and `analyzeJob`
+  - [x] Create authenticated Supabase client for RLS bypass during DB inserts and storage uploads
+
+- [x] **Phase 20.2: Frontend Authorization Header Injection** *(Complete)*
+  - [x] Add JWT `Authorization` header to `/api/apply-job` fetch call in `MatchReportPanel.tsx`
+  - [x] Add JWT `Authorization` header to `/api/analyze-job` fetch call in `Dashboard.tsx`
+  - [x] Verified `/api/hunt-jobs` fetch call in `Dashboard.tsx` already sends the token
+
+- [/] **Phase 21.0: The Autonomous Ghost Brain (Auto-Memory Extraction)** *(Active)*
+  - [ ] Backend: Extract JWT & insert into `candidate_memories` in `chatController.ts`
+  - [ ] Frontend: Pass JWT from `GhostChat.tsx` to `/api/chat`
+  - [ ] Frontend: Ensure `syncProfile` propagates updates in `UserContext.tsx`
+
 ---
 
 ## Notes

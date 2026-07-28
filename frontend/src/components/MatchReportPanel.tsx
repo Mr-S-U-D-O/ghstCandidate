@@ -2,6 +2,9 @@ import React, { useState } from "react"
 import { X, FileText, Check, AlertTriangle, MapPin, Clock, ExternalLink, Loader2 } from "lucide-react"
 import type { Job } from "./Dashboard"
 import { UserContext } from "../context/UserContext"
+import { supabase } from "../supabaseClient"
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
 
 // ── Props ─────────────────────────────────────────────────────────
 
@@ -41,7 +44,7 @@ function MatchBadgeLarge({ score }: { score: number }) {
 // ── Panel ─────────────────────────────────────────────────────────
 
 export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onReject, onNeedsInput }: MatchReportPanelProps) {
-  const { candidateProfile } = React.useContext(UserContext)
+  const { candidateProfile, user } = React.useContext(UserContext)
   const [isApplying, setIsApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,12 +55,19 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
     setError(null)
     
     try {
-      const res = await fetch("http://localhost:3001/api/apply-job", {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const res = await fetch(`${API_BASE_URL}/api/apply-job`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {})
+        },
         body: JSON.stringify({
           jobUrl: job.sourceUrl || "https://example.com/mock-job",
-          candidateProfile: candidateProfile || {}
+          candidateProfile: candidateProfile || {},
+          userId: user?.id,
+          jobMeta: { id: job.id, title: job.title, company: job.company }
         })
       })
 

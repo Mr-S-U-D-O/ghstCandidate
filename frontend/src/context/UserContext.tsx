@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react'
+import React, { createContext, useState, useEffect, useContext } from 'react'
+import type { ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../supabaseClient'
 
@@ -9,6 +10,7 @@ export interface CandidateProfile {
   locations: string[]
   skills: string[]
   rawResumeText: string
+  rawCoverLetterText: string
   [key: string]: any
 }
 
@@ -19,6 +21,7 @@ interface UserContextType {
   setCandidateProfile: React.Dispatch<React.SetStateAction<CandidateProfile>>
   syncProfile: (overrides?: Partial<CandidateProfile>) => Promise<void>
   isLoadingAuth: boolean
+  hasProfile: boolean
 }
 
 const defaultProfile: CandidateProfile = {
@@ -27,7 +30,8 @@ const defaultProfile: CandidateProfile = {
   targetRoles: [],
   locations: [],
   skills: [],
-  rawResumeText: ''
+  rawResumeText: '',
+  rawCoverLetterText: ''
 }
 
 export const UserContext = createContext<UserContextType>({
@@ -36,7 +40,8 @@ export const UserContext = createContext<UserContextType>({
   candidateProfile: defaultProfile,
   setCandidateProfile: () => {},
   syncProfile: async () => {},
-  isLoadingAuth: true
+  isLoadingAuth: true,
+  hasProfile: false
 })
 
 export const useUser = () => useContext(UserContext)
@@ -46,6 +51,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>(defaultProfile)
   const [isLoadingAuth, setIsLoadingAuth] = useState(true)
+  const [hasProfile, setHasProfile] = useState(false)
 
   // Load profile from Supabase DB
   const loadProfile = async (userId: string) => {
@@ -70,8 +76,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         locations: rest.locations || [],
         skills: rest.skills || [],
         rawResumeText: rest.raw_resume_text || '',
+        rawCoverLetterText: rest.raw_cover_letter_text || '',
         ...(extra_data || {})
       })
+      setHasProfile(true)
+    } else {
+      setHasProfile(false)
     }
   }
 
@@ -81,7 +91,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const current = { ...candidateProfile, ...(overrides || {}) }
 
     // Separate known fields from dynamic extra_data
-    const { name, email, targetRoles, locations, skills, rawResumeText, ...extra_data } = current
+    const { name, email, targetRoles, locations, skills, rawResumeText, rawCoverLetterText, ...extra_data } = current
 
     const { error } = await supabase
       .from('profiles')
@@ -93,12 +103,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         locations,
         skills,
         raw_resume_text: rawResumeText,
+        raw_cover_letter_text: rawCoverLetterText,
         extra_data
       }, { onConflict: 'id' })
 
     if (error) {
       console.error('[UserContext] Failed to sync profile:', error.message)
     } else {
+      setHasProfile(true)
       console.log('[UserContext] Profile synced to Supabase.')
     }
   }
@@ -106,11 +118,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Auth state listener — runs on mount
   useEffect(() => {
     // Get the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        loadProfile(session.user.id)
+        await loadProfile(session.user.id)
       }
       setIsLoadingAuth(false)
     })
@@ -130,7 +142,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, session, candidateProfile, setCandidateProfile, syncProfile, isLoadingAuth }}>
+    <UserContext.Provider value={{ user, session, candidateProfile, setCandidateProfile, syncProfile, isLoadingAuth, hasProfile }}>
       {children}
     </UserContext.Provider>
   )

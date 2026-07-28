@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useContext } from "react"
 import MatchReportPanel from "./MatchReportPanel"
 import GhostChat from "./GhostChat"
+import ProfileHub from "./ProfileHub"
+import ResumesPage from "./ResumesPage"
+import CoverLettersPage from "./CoverLettersPage"
 import { UserContext } from "../context/UserContext"
 import { supabase } from "../supabaseClient"
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
 import {
   LayoutDashboard,
   FileText,
@@ -15,7 +20,9 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  Bot
+  Bot,
+  User,
+  Mail
 } from "lucide-react"
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -137,16 +144,18 @@ function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
 
 // ── Sidebar ───────────────────────────────────────────────────────
 
-type NavPage = "dashboard" | "chat" | "resumes" | "settings"
+type NavPage = "dashboard" | "chat" | "resumes" | "cover_letters" | "profile" | "settings"
 
 const NAV_ITEMS: { id: NavPage; label: string; Icon: React.ElementType }[] = [
   { id: "dashboard", label: "Job Tracker", Icon: LayoutDashboard },
   { id: "chat", label: "Ghost Profiler", Icon: Bot },
   { id: "resumes", label: "Resumes", Icon: FileText },
+  { id: "cover_letters", label: "Cover Letters", Icon: Mail },
+  { id: "profile", label: "AI Memory & Profile", Icon: User },
   { id: "settings", label: "Ghost Settings", Icon: Settings },
 ]
 
-function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose }: { activePage: NavPage; onNavigate: (p: NavPage) => void; ghostPulse?: boolean; isOpen?: boolean; onClose?: () => void }) {
+function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose, candidateProfile }: { activePage: NavPage; onNavigate: (p: NavPage) => void; ghostPulse?: boolean; isOpen?: boolean; onClose?: () => void; candidateProfile?: any }) {
   return (
     <>
       {isOpen && (
@@ -178,10 +187,12 @@ function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose }: { acti
       <div className="p-4 border-t border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
-            <span className="font-sans font-bold text-xs text-white">JD</span>
+            <span className="font-sans font-bold text-xs text-white">
+              {candidateProfile?.name ? candidateProfile.name.charAt(0).toUpperCase() : 'G'}
+            </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-sans font-medium text-xs text-[#0A0A0A] truncate">Jane Doe</p>
+            <p className="font-sans font-medium text-xs text-[#0A0A0A] truncate">{candidateProfile?.name || 'Candidate'}</p>
             <p className="font-sans text-xs text-gray-400">Free tier</p>
           </div>
         </div>
@@ -240,6 +251,31 @@ export default function Dashboard() {
   const [hunterRole, setHunterRole] = useState("")
   const [hunterLocation, setHunterLocation] = useState("")
   const [hunterRunning, setHunterRunning] = useState(false)
+  const [huntingStatus, setHuntingStatus] = useState("")
+
+  // Cycling status effect
+  useEffect(() => {
+    if (!hunterRunning) {
+      setHuntingStatus("")
+      return
+    }
+    
+    const messages = [
+      "Searching ATS Databases...",
+      "Extracting job details...",
+      "Scoring match with Gemini...",
+      "Persisting to database..."
+    ]
+    let msgIndex = 0
+    setHuntingStatus(messages[msgIndex])
+    
+    const interval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % messages.length
+      setHuntingStatus(messages[msgIndex])
+    }, 4000)
+    
+    return () => clearInterval(interval)
+  }, [hunterRunning])
 
   // Pre-fill hunter inputs
   useEffect(() => {
@@ -306,7 +342,7 @@ export default function Dashboard() {
       const headers: Record<string, string> = { "Content-Type": "application/json" }
       if (token) headers["Authorization"] = `Bearer ${token}`
 
-      const res = await fetch("http://localhost:3001/api/hunt-jobs", {
+      const res = await fetch(`${API_BASE_URL}/api/hunt-jobs`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -375,12 +411,18 @@ export default function Dashboard() {
     setScrapeError(null)
 
     try {
-      const res = await fetch("http://localhost:3001/api/analyze-job", {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const res = await fetch(`${API_BASE_URL}/api/analyze-job`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {})
+        },
         body: JSON.stringify({
           url,
           candidateProfile,
+          userId: user?.id
         }),
       })
 
@@ -447,12 +489,13 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-[100dvh] w-full bg-gray-50 overflow-hidden">
-      <Sidebar 
-        activePage={activePage} 
-        onNavigate={(p) => { navigateTo(p); setIsMobileMenuOpen(false); }} 
-        ghostPulse={ghostPulse} 
-        isOpen={isMobileMenuOpen} 
-        onClose={() => setIsMobileMenuOpen(false)} 
+      <Sidebar
+        activePage={activePage}
+        onNavigate={(p) => { navigateTo(p); setIsMobileMenuOpen(false); }}
+        ghostPulse={ghostPulse}
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        candidateProfile={candidateProfile}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -471,6 +514,12 @@ export default function Dashboard() {
           <div className="flex-1 p-8 h-full">
             <GhostChat />
           </div>
+        ) : activePage === 'profile' ? (
+          <ProfileHub />
+        ) : activePage === 'resumes' ? (
+          <ResumesPage />
+        ) : activePage === 'cover_letters' ? (
+          <CoverLettersPage />
         ) : (
           <>
             {/* Top Action Bar */}
@@ -497,37 +546,45 @@ export default function Dashboard() {
                 </div>
 
                 {isHunterMode ? (
-                  <div className="flex-1 flex flex-col md:flex-row gap-3">
-                    <div className="flex-1 relative">
-                      <input
-                        type="text"
-                        value={hunterRole}
-                        onChange={(e) => setHunterRole(e.target.value)}
-                        placeholder="Role (e.g. Frontend Engineer)"
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
-                        disabled={hunterRunning}
-                      />
+                  <div className="flex-1 flex flex-col">
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={hunterRole}
+                          onChange={(e) => setHunterRole(e.target.value)}
+                          placeholder="Role (e.g. Frontend Engineer)"
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
+                          disabled={hunterRunning}
+                        />
+                      </div>
+                      <div className="w-full md:w-48 relative">
+                        <input
+                          type="text"
+                          value={hunterLocation}
+                          onChange={(e) => setHunterLocation(e.target.value)}
+                          placeholder="Location (e.g. Remote)"
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
+                          disabled={hunterRunning}
+                        />
+                      </div>
+                      <button
+                        onClick={handleHuntJobs}
+                        disabled={hunterRunning || !hunterRole.trim() || !hunterLocation.trim()}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 disabled:opacity-50 shrink-0"
+                      >
+                        {hunterRunning
+                          ? <><Loader2 size={13} className="animate-spin" />Scanning...</>
+                          : <><Search size={13} />Hunt Roles</>
+                        }
+                      </button>
                     </div>
-                    <div className="w-full md:w-48 relative">
-                      <input
-                        type="text"
-                        value={hunterLocation}
-                        onChange={(e) => setHunterLocation(e.target.value)}
-                        placeholder="Location (e.g. Remote)"
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
-                        disabled={hunterRunning}
-                      />
-                    </div>
-                    <button
-                      onClick={handleHuntJobs}
-                      disabled={hunterRunning || !hunterRole.trim() || !hunterLocation.trim()}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 disabled:opacity-50 shrink-0"
-                    >
-                      {hunterRunning
-                        ? <><Loader2 size={13} className="animate-spin" />Scanning...</>
-                        : <><Search size={13} />Hunt Roles</>
-                      }
-                    </button>
+                    {hunterRunning && (
+                      <div className="flex items-center gap-2 text-xs font-sans text-gray-500 mt-3 ml-1 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        {huntingStatus}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex-1 flex flex-col md:flex-row gap-3">

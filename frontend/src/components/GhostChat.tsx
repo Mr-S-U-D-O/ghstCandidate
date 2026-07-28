@@ -3,6 +3,8 @@ import { UserContext } from '../context/UserContext'
 import { supabase } from '../supabaseClient'
 import { Send, Bot } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
+
 interface ChatMessage {
   role: 'user' | 'ghost'
   text: string
@@ -76,7 +78,7 @@ export default function GhostChat() {
     setIsTyping(true)
 
     try {
-      const res = await fetch('http://localhost:3001/api/chat-profiler', {
+      const res = await fetch(`${API_BASE_URL}/api/chat-profiler`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

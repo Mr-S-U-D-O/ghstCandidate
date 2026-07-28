@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai"
 import { chromium, BrowserContext } from "playwright"
 import { supabase } from "../supabaseClient.js"
 import { createClient } from "@supabase/supabase-js"
+import { fetchFromJSearch, fetchFromIndeed, fetchFromReed, fetchFromTheirstack } from "../utils/jobAdapter.js"
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ export interface CandidateProfile {
 export interface AnalyzeJobPayload {
   url: string
   candidateProfile: CandidateProfile
+  userId?: string
 }
 
 export interface JobAnalysisResult {
@@ -75,7 +77,7 @@ const RESPONSE_SCHEMA = {
 // ── Playwright Scraper ─────────────────────────────────────────────
 
 async function scrapeJobPage(url: string): Promise<string> {
-  const browser = await chromium.launch({ headless: true })
+  const browser = await chromium.launch({ headless: process.env.HEADLESS === 'false' ? false : true, slowMo: 100 })
   try {
     const context = await browser.newContext({
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -108,8 +110,18 @@ async function scrapeJobPage(url: string): Promise<string> {
 
 // ── Controller ────────────────────────────────────────────────────
 
-export async function analyzeJobText(jobText: string, candidateProfile: CandidateProfile, url: string): Promise<JobAnalysisResult> {
+export async function analyzeJobText(
+  jobText: string,
+  candidateProfile: CandidateProfile,
+  url: string,
+  memories: { memory_key: string; memory_value: string }[] = []
+): Promise<JobAnalysisResult> {
   const truncated = jobText.slice(0, 8000)
+
+  // Build memories context block
+  const memoriesBlock = memories.length > 0
+    ? `\n## Ghost Brain — Learned Facts\n${memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n')}`
+    : ''
 
   // Step 2: Build prompt
   const prompt = `
@@ -123,7 +135,7 @@ Do NOT hallucinate skills. Do NOT give inflated match scores.
 - Skills: ${candidateProfile.skills.join(", ")}
 - Target Roles: ${candidateProfile.targetRoles.join(", ")}
 - Locations: ${candidateProfile.locations.join(", ")}
-- Raw Resume Context: ${candidateProfile.rawResumeText.slice(0, 1000)}
+- Raw Resume Context: ${candidateProfile.rawResumeText.slice(0, 1000)}${memoriesBlock}
 
 ## Job Posting (scraped from: ${url})
 ${truncated}
@@ -147,8 +159,11 @@ ${truncated}
     },
   })
 
+  console.log(`[analyzeJobText] Triggering Gemini AI Model (${process.env.GEMINI_MODEL || "gemini-flash-lite-latest"}). Prompt length: ${prompt.length} chars.`)
+  
   const result = await model.generateContent(prompt)
   const rawText = result.response.text().trim()
+  console.log(`[analyzeJobText] Gemini responded with ${rawText.length} characters.`)
 
   // Step 4: Parse
   let parsed: JobAnalysisResult
@@ -165,7 +180,12 @@ ${truncated}
 
 export async function analyzeJob(req: Request, res: Response): Promise<void> {
   try {
-    const { url, candidateProfile } = req.body as AnalyzeJobPayload
+    const { url, candidateProfile, userId } = req.body as AnalyzeJobPayload
+    console.log(`\n===========================================`)
+    console.log(`[analyzeJob] Request received.`)
+    console.log(`[analyzeJob] User ID: ${userId || 'N/A'}`)
+    console.log(`[analyzeJob] URL: ${url}`)
+    console.log(`===========================================`)
 
     // Validate
     if (!url || typeof url !== "string" || !url.startsWith("http")) {
@@ -175,6 +195,33 @@ export async function analyzeJob(req: Request, res: Response): Promise<void> {
     if (!candidateProfile || !Array.isArray(candidateProfile.skills)) {
       res.status(400).json({ error: "Bad Request", message: "candidateProfile is missing required fields." })
       return
+    }
+
+    // Fetch candidate memories if userId provided
+    let memories: { memory_key: string; memory_value: string }[] = []
+    
+    // Create an authenticated Supabase client for RLS
+    const authHeader = req.headers.authorization
+    let scopedSupabase = supabase
+    if (authHeader) {
+      scopedSupabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!, {
+        global: { headers: { Authorization: authHeader } }
+      })
+    }
+
+    if (userId) {
+      console.log(`[analyzeJob] Querying candidate_memories for user ${userId}...`)
+      const { data: memData, error: memError } = await scopedSupabase
+        .from('candidate_memories')
+        .select('memory_key, memory_value')
+        .eq('user_id', userId)
+      
+      if (memError) {
+        console.error(`❌ [analyzeJob] Supabase memory fetch failed:`, memError)
+      } else {
+        memories = memData || []
+        console.log(`✅ [analyzeJob] Supabase returned ${memories.length} memories.`)
+      }
     }
 
     // Step 1: Scrape the job page
@@ -194,7 +241,7 @@ export async function analyzeJob(req: Request, res: Response): Promise<void> {
       return
     }
 
-    const parsed = await analyzeJobText(jobDescription, candidateProfile, url)
+    const parsed = await analyzeJobText(jobDescription, candidateProfile, url, memories)
     console.log(`[analyzeJob] Done — "${parsed.role}" at "${parsed.company}" | score: ${parsed.matchScore}`)
     res.json(parsed)
 
@@ -208,12 +255,29 @@ export async function analyzeJob(req: Request, res: Response): Promise<void> {
 // ── Application Runner ─────────────────────────────────────────────
 
 export async function applyJob(req: Request, res: Response): Promise<void> {
-  const browser = await chromium.launch({ headless: true })
+  const browser = await chromium.launch({ headless: process.env.HEADLESS === 'false' ? false : true, slowMo: 100 })
   try {
     const { jobUrl, candidateProfile } = req.body
+    const jobMeta = req.body.jobMeta as { id?: string; title?: string; company?: string } | undefined
+    const userId = req.body.userId as string | undefined
+
+    console.log(`[applyJob] Request received. userId: ${userId}, jobId: ${jobMeta?.id}, jobUrl: ${jobUrl}`)
+
+    // Extract token and create scoped Supabase client for RLS bypass
+    const authHeader = req.headers.authorization
+    if (!authHeader) {
+      console.warn(`[applyJob] Missing Authorization header. RLS operations may fail.`)
+    }
+    let scopedSupabase = supabase
+    if (authHeader) {
+      scopedSupabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!, {
+        global: { headers: { Authorization: authHeader } }
+      })
+    }
 
     if (!jobUrl || typeof jobUrl !== "string") {
       await browser.close()
+      console.warn(`[applyJob] Missing valid jobUrl. Aborting.`)
       res.status(400).json({ error: "Bad Request", message: "A valid jobUrl is required." })
       return
     }
@@ -226,7 +290,7 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
     const page = await context.newPage()
 
     // 1. Navigate to URL
-    console.log(`[applyJob] Navigating...`)
+    console.log(`[applyJob] Navigating to ${jobUrl}...`)
     await page.goto(jobUrl, { waitUntil: "domcontentloaded", timeout: 30000 })
 
     // 2. Blocker Detection (headless — log and continue, don't wait 60s)
@@ -246,15 +310,45 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
     }
 
     // 2.5 Generate Bespoke Documents
-    console.log(`[applyJob] Generating bespoke Resume and Cover Letter...`)
+    console.log(`[applyJob] Scraping job page for document generation...`)
     const jdText = await scrapeJobPage(jobUrl)
+    console.log(`[applyJob] Scraped ${jdText.length} characters from JD.`)
+
+    // Fetch candidate memories for richer document context
+    let docMemories: { memory_key: string; memory_value: string }[] = []
+    
+    // Declare buffer variables
+    let resumePdfBuffer: Buffer | null = null
+    let coverLetterPdfBuffer: Buffer | null = null
+
+    if (userId) {
+      const { data: memData } = await scopedSupabase
+        .from('candidate_memories')
+        .select('memory_key, memory_value')
+        .eq('user_id', userId)
+      docMemories = memData || []
+    }
+    const memoriesBlock = docMemories.length > 0
+      ? `\n\nGhost Brain - Learned Facts:\n${docMemories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n')}`
+      : ''
+
     const docGenPrompt = `
 You are an expert resume and cover letter writer.
-Candidate Profile: ${JSON.stringify(candidateProfile)}
+
+Candidate Profile: ${JSON.stringify(candidateProfile)}${memoriesBlock}
+Original Cover Letter Style Reference: ${(candidateProfile.rawCoverLetterText || '').slice(0, 2000)}
+
 Job Description: ${jdText.slice(0, 5000)}
 
 Generate a highly tailored Resume and a Cover Letter for this specific job.
-Return a JSON object with two keys: "resumeHtml" and "coverLetterHtml".
+The cover letter MUST mirror the tone, voice, and structure of the Original Cover Letter Style Reference above.
+
+Return a JSON object with FOUR keys:
+1. "resumeHtml" - full A4-ready HTML for the resume
+2. "coverLetterHtml" - full A4-ready HTML for the cover letter
+3. "changes_made" - a 2-4 sentence plain English summary of the key changes made vs the original documents (which skills/experience were foregrounded, what was removed or deprioritised)
+4. "reasoning" - a 2-3 sentence explanation of WHY these specific changes improve the candidate's chances for this particular role, referencing specific requirements from the JD and candidate skills that match them
+
 STRICT STYLING REQUIREMENTS FOR HTML:
 - Minimalist, achromatic color palette (black, white, grays).
 - Whitespace dominant (high padding/margins).
@@ -274,9 +368,11 @@ STRICT STYLING REQUIREMENTS FOR HTML:
             type: SchemaType.OBJECT,
             properties: {
               resumeHtml: { type: SchemaType.STRING },
-              coverLetterHtml: { type: SchemaType.STRING }
+              coverLetterHtml: { type: SchemaType.STRING },
+              changes_made: { type: SchemaType.STRING },
+              reasoning: { type: SchemaType.STRING }
             },
-            required: ["resumeHtml", "coverLetterHtml"]
+            required: ["resumeHtml", "coverLetterHtml", "changes_made", "reasoning"]
           } as any
         }
       })
@@ -287,139 +383,72 @@ STRICT STYLING REQUIREMENTS FOR HTML:
       const renderPage = await renderContext.newPage()
       
       await renderPage.setContent(docs.resumeHtml, { waitUntil: "networkidle" })
-      await renderPage.pdf({ path: 'temp_resume.pdf', format: 'A4' })
+      resumePdfBuffer = await renderPage.pdf({ format: 'A4' })
       
       await renderPage.setContent(docs.coverLetterHtml, { waitUntil: "networkidle" })
-      await renderPage.pdf({ path: 'temp_cover_letter.pdf', format: 'A4' })
+      coverLetterPdfBuffer = await renderPage.pdf({ format: 'A4' })
       
       await renderContext.close()
-      console.log(`[applyJob] Successfully generated temp_resume.pdf and temp_cover_letter.pdf`)
-    } catch (e) {
-      console.error(`[applyJob] Failed to generate bespoke documents:`, (e as Error).message)
-    }
+      console.log(`[applyJob] Successfully generated bespoke PDF buffers.`)
 
-    // 3. Extract Form Fields
-    console.log(`[applyJob] Extracting interactive form elements...`)
-    const fields = await page.$$eval('input[type="text"], input[type="email"], input[type="file"], input[type="radio"], input[type="checkbox"], textarea, select', elements => {
-      return elements.map(el => {
-        const id = el.id || ''
-        const name = (el as HTMLInputElement).name || ''
-        const type = (el as HTMLInputElement).type || el.tagName.toLowerCase()
-        const value = (el as HTMLInputElement).value || ''
-        let labelText = ''
-        if (id) {
-          const label = document.querySelector(`label[for="${id}"]`) as HTMLLabelElement
-          if (label) labelText = label.innerText.trim()
+      // Upload to Supabase Storage and store metadata in generated_docs
+      if (userId && jobMeta?.id) {
+        console.log(`[applyJob] Uploading buffers to Supabase Storage (Resume: ${resumePdfBuffer.length} bytes, CL: ${coverLetterPdfBuffer.length} bytes)...`)
+        const resumePath = `${userId}/${jobMeta.id}-resume-${Date.now()}.pdf`
+        const coverLetterPath = `${userId}/${jobMeta.id}-coverletter-${Date.now()}.pdf`
+        
+        const { error: resumeUploadError } = await scopedSupabase.storage.from('documents').upload(resumePath, resumePdfBuffer, { contentType: 'application/pdf', upsert: true })
+        if (resumeUploadError) {
+          console.error("❌ [applyJob] Resume Storage Upload Failed:", resumeUploadError)
+          throw new Error(`Resume Storage Upload Failed: ${resumeUploadError.message}`)
         }
-        if (!labelText) {
-          const parentLabel = el.closest('label')
-          if (parentLabel) labelText = (parentLabel as HTMLLabelElement).innerText.trim()
-        }
-        return { id, name, type, value, label: labelText }
-      })
-    })
-    console.log(`[applyJob] Extracted ${fields.length} fields.`)
+        const { data: { publicUrl: resumeUrl } } = scopedSupabase.storage.from('documents').getPublicUrl(resumePath)
+        console.log("✅ [applyJob] Resume Storage Upload Success:", resumePath)
 
-    // 4. Ask Gemini to map fields — flag unknowns with sentinel value
-    let mappedActions: { elementName: string, value: string }[] = []
-    if (fields.length > 0) {
-      console.log(`[applyJob] Asking Gemini to map candidate profile to fields...`)
-      try {
-        const genAI = getGenAI()
-        const model = genAI.getGenerativeModel({
-          model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: SchemaType.ARRAY,
-              items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  elementName: { type: SchemaType.STRING },
-                  value: { type: SchemaType.STRING }
-                },
-                required: ["elementName", "value"]
-              }
-            } as any
+        const { error: clUploadError } = await scopedSupabase.storage.from('documents').upload(coverLetterPath, coverLetterPdfBuffer, { contentType: 'application/pdf', upsert: true })
+        if (clUploadError) {
+          console.error("❌ [applyJob] Cover Letter Storage Upload Failed:", clUploadError)
+          throw new Error(`Cover Letter Storage Upload Failed: ${clUploadError.message}`)
+        }
+        const { data: { publicUrl: coverLetterUrl } } = scopedSupabase.storage.from('documents').getPublicUrl(coverLetterPath)
+        console.log("✅ [applyJob] Cover Letter Storage Upload Success:", coverLetterPath)
+
+        console.log(`[applyJob] Inserting metadata into generated_docs table...`)
+        const docsToInsert = [
+          {
+            user_id: userId,
+            job_title: jobMeta?.title || 'Unknown Role',
+            company: jobMeta?.company || 'Unknown Company',
+            doc_type: 'resume',
+            file_path: resumeUrl,
+            changes_made: docs.changes_made || null,
+            reasoning: docs.reasoning || null
+          },
+          {
+            user_id: userId,
+            job_title: jobMeta?.title || 'Unknown Role',
+            company: jobMeta?.company || 'Unknown Company',
+            doc_type: 'cover_letter',
+            file_path: coverLetterUrl,
+            changes_made: docs.changes_made || null,
+            reasoning: docs.reasoning || null
           }
-        })
-
-        const prompt = `
-You are an expert form-filling AI.
-Candidate Profile: ${JSON.stringify(candidateProfile)}
-Extracted Form Fields: ${JSON.stringify(fields)}
-
-Map the candidate profile to the extracted fields.
-Return a JSON array of objects with "elementName" (use the name or id from the fields) and "value" to type in.
-IMPORTANT: If you CANNOT find the answer to a required field in the candidate profile, set its value to exactly the string "UNKNOWN_REQUIRED_INPUT".
-Do NOT skip fields — always include every field in your response.
-`.trim()
-
-        const result = await model.generateContent(prompt)
-        const rawText = result.response.text().trim()
-        mappedActions = JSON.parse(rawText)
-        console.log(`[applyJob] Gemini returned ${mappedActions.length} mapped actions.`)
-      } catch (e) {
-        console.error(`\x1b[31m[applyJob] AI Mapping Failed: ${(e as Error).message}\x1b[0m`)
+        ]
+        const { error: dbError } = await scopedSupabase.from('generated_docs').insert(docsToInsert)
+        if (dbError) {
+          console.error("❌ [applyJob] generated_docs insert failed:", dbError)
+          throw new Error(`Database insert failed: ${dbError.message}`)
+        } else {
+          console.log(`✅ [applyJob] Inserted records into generated_docs.`)
+        }
       }
-    }
-
-    // 5. Abort Logic: Check for any UNKNOWN_REQUIRED_INPUT before touching the DOM
-    const unknownField = mappedActions.find(a => a.value === "UNKNOWN_REQUIRED_INPUT")
-    if (unknownField) {
-      const fieldLabel = unknownField.elementName
-      console.warn(`[applyJob] Aborting — cannot answer required field: "${fieldLabel}"`)
+    } catch (e) {
+      console.error(`❌ [applyJob] Failed to generate/store documents:`, (e as Error).message)
       await browser.close()
-      res.status(400).json({
-        success: false,
-        status: "NEEDS_INPUT",
-        missingField: fieldLabel
-      })
+      res.status(500).json({ error: "Document Generation Failed", message: (e as Error).message })
       return
     }
 
-    // 6. All fields are answerable — execute fills
-    console.log(`[applyJob] All fields mapped. Executing form fills...`)
-    for (const action of mappedActions) {
-      if (!action.elementName) continue
-      try {
-        // First try for radio/checkbox by specific value
-        const radioSelector = `input[name="${action.elementName}"][value="${action.value}"], input#${action.elementName}[value="${action.value}"]`
-        const radioEl = await page.$(radioSelector)
-        if (radioEl) {
-          const type = await radioEl.evaluate(e => (e as HTMLInputElement).type)
-          if (type === 'radio' || type === 'checkbox') {
-            await radioEl.check({ timeout: 2000 })
-            console.log(`  - Checked ${action.elementName} with value "${action.value}"`)
-            continue
-          }
-        }
-
-        // Fallback for regular inputs
-        const selector = `[name="${action.elementName}"], #${action.elementName}`
-        const el = await page.$(selector)
-        if (el) {
-          const type = await el.evaluate(e => (e as HTMLInputElement).type)
-          if (type === 'file') {
-            const isCoverLetter = action.elementName.toLowerCase().includes('cover')
-            const fileToUpload = isCoverLetter ? 'temp_cover_letter.pdf' : 'temp_resume.pdf'
-            await el.setInputFiles(fileToUpload, { timeout: 2000 })
-            console.log(`  - Uploaded ${fileToUpload} to ${action.elementName}`)
-          } else {
-            await el.fill(action.value, { timeout: 2000 })
-            console.log(`  - Filled ${action.elementName} with "${action.value}"`)
-          }
-        } else {
-          console.warn(`  - Element not found for selector: ${action.elementName}`)
-        }
-      } catch (e) {
-        console.warn(`  - Failed to fill ${action.elementName}:`, (e as Error).message)
-      }
-    }
-
-    // 7. Brief pause then close
-    await page.waitForTimeout(2000)
-    await browser.close()
     console.log(`[applyJob] Execution complete. Browser closed.`)
 
     res.status(200).json({
@@ -441,119 +470,160 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
   const { searchRole, location, candidateProfile, userId } = req.body
 
   if (!searchRole || !location || !candidateProfile || !userId) {
+    console.warn(`[huntJobs] Missing parameters. searchRole: ${!!searchRole}, location: ${!!location}, candidateProfile: ${!!candidateProfile}, userId: ${!!userId}`)
     res.status(400).json({ error: "Missing parameters" })
     return
   }
 
-  console.log(`[huntJobs] Starting hunt for '${searchRole}' in '${location}' for user ${userId}`)
-
-  const atsDomains = ['boards.greenhouse.io', 'jobs.lever.co', 'apply.workable.com', 'jobs.ashbyhq.com']
-  const browser = await chromium.launch({ headless: true })
-  let discoveredCount = 0
+  console.log(`\n===========================================`)
+  console.log(`[huntJobs] Request received.`)
+  console.log(`[huntJobs] Search Role: '${searchRole}'`)
+  console.log(`[huntJobs] Location: '${location}'`)
+  console.log(`[huntJobs] User ID: ${userId}`)
+  console.log(`===========================================`)
 
   try {
-    const context = await browser.newContext({
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    })
-    const page = await context.newPage()
-    
-    console.log(`[huntJobs] Initiating sequential ATS Dorking searches on Bing...`)
-    
-    let allLinks: string[] = []
+    const authHeader = req.headers.authorization
+    let scopedSupabase = supabase
+    if (authHeader) {
+      scopedSupabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!, {
+        global: { headers: { Authorization: authHeader } }
+      })
+    }
 
-    for (const domain of atsDomains) {
-      const dorkQuery = `${searchRole} ${location} site:${domain}`
-      const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(dorkQuery)}`
+    // Step 1: Build the Exclusion List
+    console.log(`[huntJobs] Querying Supabase 'jobs' table for user's tracked jobs...`)
+    const { data: existingJobs, error: existingError } = await scopedSupabase
+      .from('jobs')
+      .select('source_url')
+      .eq('user_id', userId)
+
+    if (existingError) {
+      console.error(`❌ [huntJobs] Failed to fetch user's tracked jobs:`, existingError)
+      throw new Error(`Failed to fetch user's tracked jobs: ${existingError.message}`)
+    }
+    console.log(`✅ [huntJobs] Found ${existingJobs?.length || 0} tracked jobs for user ${userId}.`)
+
+    const trackedUrls = new Set(existingJobs?.map(j => j.source_url) || [])
+
+    // Step 2: Check the Data Lake (Fuzzy Search)
+    console.log(`[huntJobs] Querying Data Lake for '${searchRole}' in '${location}'...`)
+    const { data: candidateGlobalJobs, error: globalError } = await scopedSupabase
+      .from('global_jobs')
+      .select('*')
+      .ilike('title', `%${searchRole}%`)
+      .ilike('location', `%${location}%`)
+      .limit(50)
+
+    if (globalError) {
+      console.warn(`[huntJobs] Data Lake query error:`, globalError.message)
+    }
+
+    let unEvaluatedJobs = (candidateGlobalJobs || []).filter(job => !trackedUrls.has(job.apply_url))
+    console.log(`[huntJobs] Data Lake returned ${unEvaluatedJobs.length} un-evaluated jobs.`)
+
+    // Step 3: Trigger External APIs (If < 5 jobs found)
+    if (unEvaluatedJobs.length < 5) {
+      console.log(`[huntJobs] Insufficient jobs in Data Lake. Triggering API Fallback Engine...`)
       
-      try {
-        await page.setExtraHTTPHeaders({ 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' })
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 15000 })
-        
-        const links = await page.$$eval(`li.b_algo h2 a, a[href*="${domain}"]`, (anchors) => 
-          anchors.map(a => (a as HTMLAnchorElement).href)
-        )
-        // Add top 3 links from this domain search
-        allLinks = allLinks.concat(links.slice(0, 3))
-        
-        // Manual delay for anti-spam evasion
-        await page.waitForTimeout(3000)
-      } catch (err) {
-        console.error(`[huntJobs] Error scraping Bing for ${domain}:`, err)
+      let jobs = await fetchFromJSearch(searchRole, location)
+      console.log(`[huntJobs] Fetched ${jobs.length} jobs from JSearch.`)
+
+      if (jobs.length === 0) {
+        console.log(`[huntJobs] JSearch failed or returned 0. Falling back to Indeed...`)
+        jobs = await fetchFromIndeed(searchRole, location)
+        console.log(`[huntJobs] Fetched ${jobs.length} jobs from Indeed.`)
       }
-    }
-    
-    await page.close().catch(() => {})
 
-    // Filter to ensure they are target ATS domains and limit to top 5
-    const jobLinks = Array.from(new Set(allLinks)) // Deduplicate
-      .filter(href => atsDomains.some(domain => href.includes(domain)))
-      .slice(0, 5)
+      if (jobs.length === 0) {
+        console.log(`[huntJobs] Indeed failed or returned 0. Falling back to Reed...`)
+        jobs = await fetchFromReed(searchRole, location)
+        console.log(`[huntJobs] Fetched ${jobs.length} jobs from Reed.`)
+      }
 
-    console.log(`[huntJobs] Found ${jobLinks.length} job links to process.`)
+      if (jobs.length === 0) {
+        console.log(`[huntJobs] Reed failed or returned 0. Falling back to TheirStack...`)
+        jobs = await fetchFromTheirstack(searchRole, location)
+        console.log(`[huntJobs] Fetched ${jobs.length} jobs from TheirStack.`)
+      }
 
-    for (const jobUrl of jobLinks) {
-      try {
-        console.log(`[huntJobs] Processing: ${jobUrl}`)
-        const jobPage = await context.newPage()
-        await jobPage.goto(jobUrl, { waitUntil: "domcontentloaded", timeout: 10000 }).catch(() => {})
-        
-        // Extract description text from direct ATS page
-        const text = await jobPage.$eval('body', el => (el as HTMLElement).innerText).catch(() => "")
-        await jobPage.close()
+      if (jobs.length > 0) {
+        // Bulk upsert new jobs into global_jobs
+        const { data, error } = await scopedSupabase
+          .from('global_jobs')
+          .upsert(jobs, { onConflict: 'apply_url', ignoreDuplicates: true })
+          .select()
 
-        if (!text || text.length < 100) {
-          console.log(`[huntJobs] Skipping ${jobUrl} - no readable content`)
-          continue
-        }
-
-        // Analyze via Gemini
-        const analysis = await analyzeJobText(text, candidateProfile, jobUrl)
-
-        // Insert to Supabase
-        const dbCol = analysis.matchScore > 75 ? 'review' : 'discovered'
-        const jobRow = {
-          user_id: userId,
-          company: analysis.company,
-          title: analysis.role,
-          location: location,
-          posted_ago: "Just now",
-          match_score: analysis.matchScore,
-          "column": dbCol,
-          verdict: analysis.verdict,
-          matches_found: analysis.matchesFound,
-          missing_or_weak: analysis.missingOrWeak,
-          human_input_required: analysis.humanInputRequired,
-          source_url: jobUrl,
-          needs_input: false,
-        }
-
-        const authHeader = req.headers.authorization
-        let scopedSupabase = supabase
-        if (authHeader) {
-          scopedSupabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!, {
-            global: { headers: { Authorization: authHeader } }
-          })
-        }
-
-        const { error } = await scopedSupabase.from('jobs').insert(jobRow)
         if (error) {
-          console.error(`[huntJobs] DB Insert Error: ${error.message}`)
+          console.error(`[huntJobs] Bulk insert error:`, error.message)
         } else {
-          discoveredCount++
-          console.log(`[huntJobs] Successfully persisted: ${analysis.role} at ${analysis.company}`)
+          console.log(`[huntJobs] Successfully inserted ${data?.length || 0} new jobs into global_jobs.`)
         }
-      } catch (jobErr) {
-        console.error(`[huntJobs] Error processing job ${jobUrl}:`, jobErr)
+
+        // Filter new API results against the Exclusion List
+        const newUnEvaluated = jobs.filter(job => !trackedUrls.has(job.apply_url))
+        
+        // Combine with Data Lake jobs
+        unEvaluatedJobs = [...unEvaluatedJobs, ...newUnEvaluated]
       }
     }
 
-    res.json({ success: true, count: discoveredCount })
+    // Step 4: Take the top 5 jobs
+    unEvaluatedJobs = unEvaluatedJobs.slice(0, 5)
+    console.log(`[huntJobs] Proceeding to Gemini Evaluation with ${unEvaluatedJobs.length} jobs.`)
+
+    // Fetch candidate memories once to inject into all scoring calls
+    let huntMemories: { memory_key: string; memory_value: string }[] = []
+    const { data: memData } = await scopedSupabase
+      .from('candidate_memories')
+      .select('memory_key, memory_value')
+      .eq('user_id', userId)
+    huntMemories = memData || []
+    console.log(`[huntJobs] Injecting ${huntMemories.length} candidate memories into scoring prompts.`)
+
+    // Step 5: Evaluate with Gemini & Insert into Kanban
+    const evaluatedJobs = []
+    for (const job of unEvaluatedJobs) {
+      console.log(`[huntJobs] Evaluating: ${job.title} at ${job.company}`)
+      try {
+        const parsed = await analyzeJobText(job.description, candidateProfile, job.apply_url, huntMemories)
+        
+        const kanbanJob = {
+          user_id: userId,
+          company: parsed.company || job.company,
+          title: parsed.role || job.title,
+          location: job.location,
+          source_url: job.apply_url,
+          match_score: parsed.matchScore,
+          verdict: parsed.verdict,
+          matches_found: parsed.matchesFound,
+          missing_or_weak: parsed.missingOrWeak,
+          human_input_required: parsed.humanInputRequired,
+          column: 'discovered'
+        }
+
+        const { data: insertedJob, error: insertError } = await scopedSupabase
+          .from('jobs')
+          .insert(kanbanJob)
+          .select()
+          .single()
+
+        if (insertError) {
+          console.error(`❌ [huntJobs] Failed to insert job into Kanban:`, insertError)
+        } else if (insertedJob) {
+          console.log(`✅ [huntJobs] Inserted evaluated job into Kanban: ${insertedJob.title} at ${insertedJob.company}`)
+          evaluatedJobs.push(insertedJob)
+        }
+      } catch (e) {
+        console.error(`❌ [huntJobs] Failed to evaluate job ${job.apply_url}:`, e)
+      }
+    }
+
+    res.json({ success: true, count: evaluatedJobs.length, jobs: evaluatedJobs })
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error("[huntJobs] Execution failed:", message)
     res.status(500).json({ error: "Internal Server Error", message })
-  } finally {
-    try { await browser.close() } catch {}
   }
 }
