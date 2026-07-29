@@ -245,10 +245,22 @@
   - [x] Add JWT `Authorization` header to `/api/analyze-job` fetch call in `Dashboard.tsx`
   - [x] Verified `/api/hunt-jobs` fetch call in `Dashboard.tsx` already sends the token
 
-- [/] **Phase 21.0: The Autonomous Ghost Brain (Auto-Memory Extraction)** *(Active)*
-  - [ ] Backend: Extract JWT & insert into `candidate_memories` in `chatController.ts`
-  - [ ] Frontend: Pass JWT from `GhostChat.tsx` to `/api/chat`
-  - [ ] Frontend: Ensure `syncProfile` propagates updates in `UserContext.tsx`
+- [x] **Phase 21.0: The Autonomous Ghost Brain (Auto-Memory Extraction)** *(Complete)*
+  - [x] Backend: Extract JWT & insert into `candidate_memories` in `chatController.ts`
+  - [x] Frontend: Pass JWT from `GhostChat.tsx` to `/api/chat`
+  - [x] Frontend: Ensure `syncProfile` propagates updates in `UserContext.tsx`
+
+- [x] **Phase 22.0: Final UX Polish & Audit Gap Resolution** *(Complete)*
+  - [x] Fix the "Update CV" Button in `ProfileHub.tsx`
+  - [x] Resolve the Kanban "Approve" Inconsistency in `Dashboard.tsx`
+  - [x] Add the "Last Mile" Application Link in `ResumesPage.tsx` & `CoverLettersPage.tsx`
+
+- [x] **Phase 23.0: Stagehand Integration & The Autonomous Agent Loop** *(Complete)*
+  - [x] Install `@browserbasehq/stagehand` and `zod` in backend
+  - [x] Extract `generateBespokeDocs()` as shared helper from `jobController.ts`
+  - [x] Create `agentController.ts` with Login Wall Triage + JIT doc gen loop
+  - [x] Register `POST /api/run-agent` in `server.ts`
+  - [x] Update `MatchReportPanel.tsx` with Bottleneck UI and "Submit & Resume" flow
 
 ---
 

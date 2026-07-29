@@ -47,51 +47,90 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
   const { candidateProfile, user } = React.useContext(UserContext)
   const [isApplying, setIsApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Bottleneck UI state
+  const [needsInputQuestion, setNeedsInputQuestion] = useState<string | null>(null)
+  const [requiresLogin, setRequiresLogin] = useState(false)
+  const [jitAnswer, setJitAnswer] = useState('')
+  const [isSavingAnswer, setIsSavingAnswer] = useState(false)
 
   const handleApprove = async () => {
-    console.log("[MatchReportPanel] handleApprove clicked for job ID:", job?.id)
+    console.log("[MatchReportPanel] handleRunAgent clicked for job ID:", job?.id)
     if (!job) return
     setIsApplying(true)
     setError(null)
+    setNeedsInputQuestion(null)
+    setRequiresLogin(false)
     
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      const res = await fetch(`${API_BASE_URL}/api/apply-job`, {
+      const res = await fetch(`${API_BASE_URL}/api/run-agent`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           ...(session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify({
-          jobUrl: job.sourceUrl || "https://example.com/mock-job",
+          jobId: job.id,
+          jobUrl: job.sourceUrl || "",
           candidateProfile: candidateProfile || {},
           userId: user?.id,
-          jobMeta: { id: job.id, title: job.title, company: job.company }
+          jobTitle: job.title,
+          company: job.company
         })
       })
 
       const data = await res.json()
 
-      if (!res.ok) {
-        if (data.status === "NEEDS_INPUT" && data.missingField) {
-          // Graceful failure: flag the card and signal Ghost Profiler pulse
-          console.warn("[MatchReportPanel] NEEDS_INPUT — missing field:", data.missingField)
-          onNeedsInput(job.id, data.missingField)
-          setError(`Ghost blocked: "${data.missingField}" is required but missing from your profile. Visit Ghost Profiler to add it.`)
-        } else {
-          throw new Error(data.message ?? "API error")
-        }
+      if (data.status === 'REQUIRES_LOGIN') {
+        console.warn("[MatchReportPanel] REQUIRES_LOGIN — job flagged.")
+        setRequiresLogin(true)
+        onNeedsInput(job.id, 'requires_manual_login')
         return
+      }
+
+      if (data.status === 'NEEDS_INPUT' && data.missingField) {
+        console.warn("[MatchReportPanel] NEEDS_INPUT —", data.missingField)
+        setNeedsInputQuestion(data.missingField)
+        onNeedsInput(job.id, data.missingField)
+        return
+      }
+
+      if (!res.ok) {
+        throw new Error(data.message ?? "Agent returned an error.")
       }
 
       onApprove(job.id)
       onClose()
     } catch (err) {
-      setError("Failed to apply. Please try again.")
+      setError("The Ghost encountered an error. Check backend logs.")
       console.error(err)
     } finally {
       setIsApplying(false)
+    }
+  }
+
+  const handleSubmitAnswer = async () => {
+    if (!job || !jitAnswer.trim() || !needsInputQuestion) return
+    setIsSavingAnswer(true)
+    try {
+      // Save the answer to candidate_memories
+      await supabase.from('candidate_memories').insert({
+        user_id: user?.id,
+        memory_key: needsInputQuestion,
+        memory_value: jitAnswer.trim(),
+        source: 'bottleneck_jit'
+      })
+      console.log('[MatchReportPanel] JIT answer saved to candidate_memories.')
+      setJitAnswer('')
+      setNeedsInputQuestion(null)
+      // Re-trigger the agent with the new memory now available
+      await handleApprove()
+    } catch (err) {
+      setError("Failed to save your answer. Please try again.")
+      console.error(err)
+    } finally {
+      setIsSavingAnswer(false)
     }
   }
 
@@ -105,6 +144,9 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
     if (isOpen) {
       setIsApplying(false)
       setError(null)
+      setNeedsInputQuestion(null)
+      setRequiresLogin(false)
+      setJitAnswer('')
     }
   }, [isOpen, job?.id])
 
@@ -254,16 +296,71 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
             </div>
 
             {/* ── 5. Sticky Footer ── */}
-            <div className="shrink-0 bg-white border-t border-gray-100 px-8 py-5 flex items-center justify-between gap-3">
-              <div className="text-red-500 text-sm font-sans">{error}</div>
-              <div className="flex items-center gap-3">
-                <button onClick={handleReject} disabled={isApplying} className="px-5 py-2.5 bg-white text-gray-600 font-sans font-medium text-sm rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50">
-                  Reject Job
-                </button>
-                <button onClick={handleApprove} disabled={isApplying} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50">
-                  {isApplying ? <><Loader2 size={14} className="animate-spin" /> Ghost is applying...</> : "Approve & Queue"}
-                </button>
-              </div>
+            <div className="shrink-0 bg-white border-t border-gray-100 px-8 py-5">
+
+              {/* Login wall banner */}
+              {requiresLogin && (
+                <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-sans text-sm font-semibold text-amber-800">Login Required</p>
+                    <p className="font-sans text-xs text-amber-700 mt-0.5">This job requires you to sign in manually. Click "View Posting" above, sign in, then come back and try again.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Bottleneck UI — JIT input required */}
+              {needsInputQuestion && !requiresLogin && (
+                <div className="mb-4 space-y-3">
+                  <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-sans text-sm font-semibold text-amber-800">Ghost Blocked</p>
+                      <p className="font-sans text-xs text-amber-700 mt-1">The agent encountered a question it couldn't answer:</p>
+                      <p className="font-sans text-sm text-amber-900 font-medium mt-1 italic">"{needsInputQuestion}"</p>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={jitAnswer}
+                    onChange={(e) => setJitAnswer(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitAnswer() }}
+                    placeholder="Type your answer here..."
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-sm font-sans text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                  />
+                  <button
+                    onClick={handleSubmitAnswer}
+                    disabled={isSavingAnswer || !jitAnswer.trim()}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  >
+                    {isSavingAnswer ? <><Loader2 size={14} className="animate-spin" /> Saving & Resuming Agent...</> : 'Submit Answer & Resume Agent'}
+                  </button>
+                </div>
+              )}
+
+              {/* Error message */}
+              <div className="text-red-500 text-sm font-sans mb-3">{error}</div>
+
+              {/* Standard footer actions */}
+              {!needsInputQuestion && !requiresLogin && (
+                <div className="flex items-center justify-between gap-3">
+                  <button onClick={handleReject} disabled={isApplying} className="px-5 py-2.5 bg-white text-gray-600 font-sans font-medium text-sm rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50">
+                    Reject Job
+                  </button>
+                  <button onClick={handleApprove} disabled={isApplying} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50">
+                    {isApplying ? <><Loader2 size={14} className="animate-spin" /> Ghost is running...</> : 'Generate Documents & Apply'}
+                  </button>
+                </div>
+              )}
+
+              {/* Close button when in a blocked state */}
+              {(needsInputQuestion || requiresLogin) && !isApplying && (
+                <div className="flex justify-end">
+                  <button onClick={handleReject} className="px-5 py-2.5 bg-white text-gray-600 font-sans font-medium text-sm rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors">
+                    Reject Job
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}

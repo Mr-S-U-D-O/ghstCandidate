@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useUser } from '../context/UserContext'
 import { supabase } from '../supabaseClient'
 import { FileText, Brain, Upload, Plus, Trash2, Download, User } from 'lucide-react'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
 
 type Tab = 'profile' | 'memory' | 'docs'
 
@@ -23,13 +25,16 @@ interface GeneratedDoc {
 }
 
 export default function ProfileHub() {
-  const { candidateProfile, user } = useUser()
+  const { candidateProfile, setCandidateProfile, syncProfile, user } = useUser()
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [memories, setMemories] = useState<Memory[]>([])
   const [docs, setDocs] = useState<GeneratedDoc[]>([])
 
   const [newKey, setNewKey] = useState('')
   const [newValue, setNewValue] = useState('')
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isParsingCv, setIsParsingCv] = useState(false)
 
   useEffect(() => {
     if (activeTab === 'memory') {
@@ -75,6 +80,43 @@ export default function ProfileHub() {
     }
   }
 
+  const handleUpdateCv = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsParsingCv(true)
+    try {
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64Str = (event.target?.result as string).split(',')[1]
+        if (!base64Str) throw new Error("Failed to read file as base64")
+
+        const res = await fetch(`${API_BASE_URL}/api/parse-cv`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdfBase64: base64Str })
+        })
+
+        if (!res.ok) throw new Error("Failed to parse CV")
+
+        const data = await res.json()
+        const merged = { ...candidateProfile, ...data }
+        setCandidateProfile(merged)
+        await syncProfile(merged)
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error("[ProfileHub] Error updating CV:", err)
+    } finally {
+      setIsParsingCv(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col h-full bg-white overflow-hidden">
       <div className="px-8 py-6 border-b border-gray-200 shrink-0">
@@ -114,8 +156,19 @@ export default function ProfileHub() {
                     <h2 className="font-heading text-lg font-bold text-[#0A0A0A]">Candidate Summary</h2>
                     <p className="font-sans text-sm text-gray-500 mt-1">Core details extracted from your resume.</p>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-[#0A0A0A] text-sm font-sans font-medium rounded-sm hover:bg-gray-50 transition-colors">
-                    <Upload size={14} /> Update CV
+                  <input 
+                    type="file" 
+                    accept="application/pdf" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                  />
+                  <button 
+                    onClick={handleUpdateCv}
+                    disabled={isParsingCv}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-[#0A0A0A] text-sm font-sans font-medium rounded-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    <Upload size={14} /> {isParsingCv ? "Parsing CV..." : "Update CV"}
                   </button>
                 </div>
                 

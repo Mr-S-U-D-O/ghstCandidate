@@ -252,6 +252,144 @@ export async function analyzeJob(req: Request, res: Response): Promise<void> {
   }
 }
 
+// ── Shared Doc Gen Helper ──────────────────────────────────────────
+
+export interface BespokeDocsResult {
+  resumePdfBuffer: Buffer
+  coverLetterPdfBuffer: Buffer
+  resumeUrl: string
+  coverLetterUrl: string
+  changes_made: string | null
+  reasoning: string | null
+}
+
+export interface BespokeDocsOptions {
+  jdText: string
+  candidateProfile: CandidateProfile
+  memories: { memory_key: string; memory_value: string }[]
+  userId: string
+  jobId: string
+  jobTitle?: string
+  company?: string
+  scopedSupabase: any
+}
+
+export async function generateBespokeDocs(opts: BespokeDocsOptions): Promise<BespokeDocsResult> {
+  const { jdText, candidateProfile, memories, userId, jobId, jobTitle, company, scopedSupabase } = opts
+
+  console.log(`[generateBespokeDocs] Starting for job: "${jobTitle}" at "${company}"`)
+  console.log(`[generateBespokeDocs] JD length: ${jdText.length} chars | Memories: ${memories.length}`)
+
+  const memoriesBlock = memories.length > 0
+    ? `\n\nGhost Brain - Learned Facts:\n${memories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n')}`
+    : ''
+
+  const docGenPrompt = `
+You are an expert resume and cover letter writer.
+
+Candidate Profile: ${JSON.stringify(candidateProfile)}${memoriesBlock}
+Original Cover Letter Style Reference: ${(candidateProfile.rawCoverLetterText || '').slice(0, 2000)}
+
+Job Description: ${jdText.slice(0, 5000)}
+
+Generate a highly tailored Resume and a Cover Letter for this specific job.
+The cover letter MUST mirror the tone, voice, and structure of the Original Cover Letter Style Reference above.
+
+Return a JSON object with FOUR keys:
+1. "resumeHtml" - full A4-ready HTML for the resume
+2. "coverLetterHtml" - full A4-ready HTML for the cover letter
+3. "changes_made" - a 2-4 sentence plain English summary of the key changes made vs the original documents (which skills/experience were foregrounded, what was removed or deprioritised)
+4. "reasoning" - a 2-3 sentence explanation of WHY these specific changes improve the candidate's chances for this particular role, referencing specific requirements from the JD and candidate skills that match them
+
+STRICT STYLING REQUIREMENTS FOR HTML:
+- Minimalist, achromatic color palette (black, white, grays).
+- Whitespace dominant (high padding/margins).
+- No gradients, no emojis.
+- Headings MUST use 'Comfortaa' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap" rel="stylesheet">).
+- Body text MUST use 'Lato' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">).
+- Use inline styles or a <style> block.
+`.trim()
+
+  const docGenAI = getGenAI()
+  const docModel = docGenAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: SchemaType.OBJECT,
+        properties: {
+          resumeHtml: { type: SchemaType.STRING },
+          coverLetterHtml: { type: SchemaType.STRING },
+          changes_made: { type: SchemaType.STRING },
+          reasoning: { type: SchemaType.STRING }
+        },
+        required: ["resumeHtml", "coverLetterHtml", "changes_made", "reasoning"]
+      } as any
+    }
+  })
+
+  console.log(`[generateBespokeDocs] Calling Gemini model: ${process.env.GEMINI_MODEL || "gemini-flash-lite-latest"}`)
+  const docResult = await docModel.generateContent(docGenPrompt)
+  const docs = JSON.parse(docResult.response.text().trim())
+  console.log(`[generateBespokeDocs] ✅ Gemini responded. Rendering PDFs...`)
+
+  // Render HTML to PDFs using Playwright
+  const browser = await chromium.launch({ headless: true })
+  let resumePdfBuffer: Buffer
+  let coverLetterPdfBuffer: Buffer
+  try {
+    const renderContext = await browser.newContext()
+    const renderPage = await renderContext.newPage()
+
+    await renderPage.setContent(docs.resumeHtml, { waitUntil: "networkidle" })
+    resumePdfBuffer = await renderPage.pdf({ format: 'A4' })
+
+    await renderPage.setContent(docs.coverLetterHtml, { waitUntil: "networkidle" })
+    coverLetterPdfBuffer = await renderPage.pdf({ format: 'A4' })
+
+    await renderContext.close()
+  } finally {
+    await browser.close()
+  }
+
+  console.log(`[generateBespokeDocs] PDFs rendered — Resume: ${resumePdfBuffer.length} bytes | CL: ${coverLetterPdfBuffer.length} bytes`)
+
+  // Upload to Supabase Storage
+  const ts = Date.now()
+  const resumePath = `${userId}/${jobId}-resume-${ts}.pdf`
+  const clPath = `${userId}/${jobId}-coverletter-${ts}.pdf`
+
+  const { error: resumeUploadError } = await scopedSupabase.storage.from('documents').upload(resumePath, resumePdfBuffer, { contentType: 'application/pdf', upsert: true })
+  if (resumeUploadError) {
+    console.error(`❌ [generateBespokeDocs] Resume upload failed:`, resumeUploadError)
+    throw new Error(`Resume Storage Upload Failed: ${resumeUploadError.message}`)
+  }
+  const { data: { publicUrl: resumeUrl } } = scopedSupabase.storage.from('documents').getPublicUrl(resumePath)
+  console.log(`✅ [generateBespokeDocs] Resume uploaded:`, resumePath)
+
+  const { error: clUploadError } = await scopedSupabase.storage.from('documents').upload(clPath, coverLetterPdfBuffer, { contentType: 'application/pdf', upsert: true })
+  if (clUploadError) {
+    console.error(`❌ [generateBespokeDocs] Cover letter upload failed:`, clUploadError)
+    throw new Error(`Cover Letter Storage Upload Failed: ${clUploadError.message}`)
+  }
+  const { data: { publicUrl: coverLetterUrl } } = scopedSupabase.storage.from('documents').getPublicUrl(clPath)
+  console.log(`✅ [generateBespokeDocs] Cover letter uploaded:`, clPath)
+
+  // Insert metadata into generated_docs
+  const docsToInsert = [
+    { user_id: userId, job_id: jobId, job_title: jobTitle || 'Unknown Role', company: company || 'Unknown Company', doc_type: 'resume', file_path: resumeUrl, changes_made: docs.changes_made || null, reasoning: docs.reasoning || null },
+    { user_id: userId, job_id: jobId, job_title: jobTitle || 'Unknown Role', company: company || 'Unknown Company', doc_type: 'cover_letter', file_path: coverLetterUrl, changes_made: docs.changes_made || null, reasoning: docs.reasoning || null }
+  ]
+  const { error: dbError } = await (scopedSupabase as any).from('generated_docs').insert(docsToInsert)
+  if (dbError) {
+    console.error(`❌ [generateBespokeDocs] DB insert failed:`, dbError)
+    throw new Error(`Database insert failed: ${dbError.message}`)
+  }
+  console.log(`✅ [generateBespokeDocs] Metadata inserted into generated_docs.`)
+
+  return { resumePdfBuffer, coverLetterPdfBuffer, resumeUrl, coverLetterUrl, changes_made: docs.changes_made || null, reasoning: docs.reasoning || null }
+}
+
 // ── Application Runner ─────────────────────────────────────────────
 
 export async function applyJob(req: Request, res: Response): Promise<void> {
@@ -293,13 +431,13 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
     console.log(`[applyJob] Navigating to ${jobUrl}...`)
     await page.goto(jobUrl, { waitUntil: "domcontentloaded", timeout: 30000 })
 
-    // 2. Blocker Detection (headless — log and continue, don't wait 60s)
+    // 2. Blocker Detection
     const hasPassword = await page.$('input[type="password"]')
     const iframes = await page.$$eval('iframe', frames => frames.map(f => f.src.toLowerCase()))
     const hasCaptcha = iframes.some(src => src.includes('captcha') || src.includes('turnstile') || src.includes('challenge'))
 
     if (hasPassword || hasCaptcha) {
-      console.warn(`[applyJob] Blocker detected (Password: ${!!hasPassword}, Captcha: ${hasCaptcha}). Aborting — cannot resolve in headless mode.`)
+      console.warn(`[applyJob] Blocker detected (Password: ${!!hasPassword}, Captcha: ${hasCaptcha}). Aborting.`)
       await browser.close()
       res.status(400).json({
         success: false,
@@ -309,141 +447,36 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
       return
     }
 
-    // 2.5 Generate Bespoke Documents
-    console.log(`[applyJob] Scraping job page for document generation...`)
-    const jdText = await scrapeJobPage(jobUrl)
-    console.log(`[applyJob] Scraped ${jdText.length} characters from JD.`)
-
-    // Fetch candidate memories for richer document context
+    // 3. Fetch memories
     let docMemories: { memory_key: string; memory_value: string }[] = []
-    
-    // Declare buffer variables
-    let resumePdfBuffer: Buffer | null = null
-    let coverLetterPdfBuffer: Buffer | null = null
-
     if (userId) {
       const { data: memData } = await scopedSupabase
         .from('candidate_memories')
         .select('memory_key, memory_value')
         .eq('user_id', userId)
       docMemories = memData || []
+      console.log(`[applyJob] Fetched ${docMemories.length} memories.`)
     }
-    const memoriesBlock = docMemories.length > 0
-      ? `\n\nGhost Brain - Learned Facts:\n${docMemories.map(m => `- ${m.memory_key}: ${m.memory_value}`).join('\n')}`
-      : ''
 
-    const docGenPrompt = `
-You are an expert resume and cover letter writer.
-
-Candidate Profile: ${JSON.stringify(candidateProfile)}${memoriesBlock}
-Original Cover Letter Style Reference: ${(candidateProfile.rawCoverLetterText || '').slice(0, 2000)}
-
-Job Description: ${jdText.slice(0, 5000)}
-
-Generate a highly tailored Resume and a Cover Letter for this specific job.
-The cover letter MUST mirror the tone, voice, and structure of the Original Cover Letter Style Reference above.
-
-Return a JSON object with FOUR keys:
-1. "resumeHtml" - full A4-ready HTML for the resume
-2. "coverLetterHtml" - full A4-ready HTML for the cover letter
-3. "changes_made" - a 2-4 sentence plain English summary of the key changes made vs the original documents (which skills/experience were foregrounded, what was removed or deprioritised)
-4. "reasoning" - a 2-3 sentence explanation of WHY these specific changes improve the candidate's chances for this particular role, referencing specific requirements from the JD and candidate skills that match them
-
-STRICT STYLING REQUIREMENTS FOR HTML:
-- Minimalist, achromatic color palette (black, white, grays).
-- Whitespace dominant (high padding/margins).
-- No gradients, no emojis.
-- Headings MUST use 'Comfortaa' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap" rel="stylesheet">).
-- Body text MUST use 'Lato' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">).
-- Use inline styles or a <style> block.
-`.trim()
-
+    // 4. Generate Bespoke Documents via shared helper
     try {
-      const docGenAI = getGenAI()
-      const docModel = docGenAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: SchemaType.OBJECT,
-            properties: {
-              resumeHtml: { type: SchemaType.STRING },
-              coverLetterHtml: { type: SchemaType.STRING },
-              changes_made: { type: SchemaType.STRING },
-              reasoning: { type: SchemaType.STRING }
-            },
-            required: ["resumeHtml", "coverLetterHtml", "changes_made", "reasoning"]
-          } as any
-        }
-      })
-      const docResult = await docModel.generateContent(docGenPrompt)
-      const docs = JSON.parse(docResult.response.text().trim())
-      
-      const renderContext = await browser.newContext()
-      const renderPage = await renderContext.newPage()
-      
-      await renderPage.setContent(docs.resumeHtml, { waitUntil: "networkidle" })
-      resumePdfBuffer = await renderPage.pdf({ format: 'A4' })
-      
-      await renderPage.setContent(docs.coverLetterHtml, { waitUntil: "networkidle" })
-      coverLetterPdfBuffer = await renderPage.pdf({ format: 'A4' })
-      
-      await renderContext.close()
-      console.log(`[applyJob] Successfully generated bespoke PDF buffers.`)
+      const jdText = await scrapeJobPage(jobUrl)
+      console.log(`[applyJob] Scraped ${jdText.length} characters from JD.`)
 
-      // Upload to Supabase Storage and store metadata in generated_docs
       if (userId && jobMeta?.id) {
-        console.log(`[applyJob] Uploading buffers to Supabase Storage (Resume: ${resumePdfBuffer.length} bytes, CL: ${coverLetterPdfBuffer.length} bytes)...`)
-        const resumePath = `${userId}/${jobMeta.id}-resume-${Date.now()}.pdf`
-        const coverLetterPath = `${userId}/${jobMeta.id}-coverletter-${Date.now()}.pdf`
-        
-        const { error: resumeUploadError } = await scopedSupabase.storage.from('documents').upload(resumePath, resumePdfBuffer, { contentType: 'application/pdf', upsert: true })
-        if (resumeUploadError) {
-          console.error("❌ [applyJob] Resume Storage Upload Failed:", resumeUploadError)
-          throw new Error(`Resume Storage Upload Failed: ${resumeUploadError.message}`)
-        }
-        const { data: { publicUrl: resumeUrl } } = scopedSupabase.storage.from('documents').getPublicUrl(resumePath)
-        console.log("✅ [applyJob] Resume Storage Upload Success:", resumePath)
-
-        const { error: clUploadError } = await scopedSupabase.storage.from('documents').upload(coverLetterPath, coverLetterPdfBuffer, { contentType: 'application/pdf', upsert: true })
-        if (clUploadError) {
-          console.error("❌ [applyJob] Cover Letter Storage Upload Failed:", clUploadError)
-          throw new Error(`Cover Letter Storage Upload Failed: ${clUploadError.message}`)
-        }
-        const { data: { publicUrl: coverLetterUrl } } = scopedSupabase.storage.from('documents').getPublicUrl(coverLetterPath)
-        console.log("✅ [applyJob] Cover Letter Storage Upload Success:", coverLetterPath)
-
-        console.log(`[applyJob] Inserting metadata into generated_docs table...`)
-        const docsToInsert = [
-          {
-            user_id: userId,
-            job_title: jobMeta?.title || 'Unknown Role',
-            company: jobMeta?.company || 'Unknown Company',
-            doc_type: 'resume',
-            file_path: resumeUrl,
-            changes_made: docs.changes_made || null,
-            reasoning: docs.reasoning || null
-          },
-          {
-            user_id: userId,
-            job_title: jobMeta?.title || 'Unknown Role',
-            company: jobMeta?.company || 'Unknown Company',
-            doc_type: 'cover_letter',
-            file_path: coverLetterUrl,
-            changes_made: docs.changes_made || null,
-            reasoning: docs.reasoning || null
-          }
-        ]
-        const { error: dbError } = await scopedSupabase.from('generated_docs').insert(docsToInsert)
-        if (dbError) {
-          console.error("❌ [applyJob] generated_docs insert failed:", dbError)
-          throw new Error(`Database insert failed: ${dbError.message}`)
-        } else {
-          console.log(`✅ [applyJob] Inserted records into generated_docs.`)
-        }
+        await generateBespokeDocs({
+          jdText,
+          candidateProfile,
+          memories: docMemories,
+          userId,
+          jobId: jobMeta.id,
+          jobTitle: jobMeta.title,
+          company: jobMeta.company,
+          scopedSupabase
+        })
       }
     } catch (e) {
-      console.error(`❌ [applyJob] Failed to generate/store documents:`, (e as Error).message)
+      console.error(`❌ [applyJob] Document generation failed:`, (e as Error).message)
       await browser.close()
       res.status(500).json({ error: "Document Generation Failed", message: (e as Error).message })
       return
@@ -453,7 +486,7 @@ STRICT STYLING REQUIREMENTS FOR HTML:
 
     res.status(200).json({
       success: true,
-      message: "The Ghost has successfully submitted your application."
+      message: "The Ghost has successfully generated your documents."
     })
 
   } catch (err: unknown) {

@@ -4,6 +4,7 @@ import dotenv from "dotenv"
 import { analyzeJob, applyJob, huntJobs } from "./controllers/jobController.js"
 import { parseCv } from "./controllers/cvController.js"
 import { chatProfiler } from "./controllers/chatController.js"
+import { runAgent } from "./controllers/agentController.js"
 
 // ── Load .env before anything else ────────────────────────────────
 dotenv.config()
@@ -39,6 +40,7 @@ app.post("/api/apply-job", applyJob)
 app.post("/api/hunt-jobs", huntJobs)
 app.post("/api/parse-cv", parseCv)
 app.post("/api/chat-profiler", chatProfiler)
+app.post("/api/run-agent", runAgent)
 
 // 404 catch-all
 app.use((_req, res) => {

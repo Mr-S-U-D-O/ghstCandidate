@@ -121,11 +121,8 @@ function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
       <p className="font-sans text-xs text-gray-400 mb-4">{job.location}</p>
       <div className="flex items-center justify-between">
         <MatchBadge score={job.matchScore} needsInput={job.needsInput} missingField={job.missingField} />
-        {job.column === "review" && onApprove && onReject && (
+        {job.column === "review" && onReject && (
           <div className="flex items-center gap-1.5">
-            <button onClick={(e) => { e.stopPropagation(); onApprove(job.id) }} className="flex items-center gap-1 px-3 py-1.5 bg-[#0A0A0A] text-white text-xs font-sans font-medium rounded-sm hover:bg-gray-800 transition-colors">
-              <Check size={11} strokeWidth={2.5} />Approve
-            </button>
             <button onClick={(e) => { e.stopPropagation(); onReject(job.id) }} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
               <X size={11} strokeWidth={2.5} />Reject
             </button>

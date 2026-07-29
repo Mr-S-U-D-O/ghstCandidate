@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react"
 import { useUser } from "../context/UserContext"
 import { supabase } from "../supabaseClient"
-import { ChevronDown, ChevronUp, Download, FileText, Layers } from "lucide-react"
+import { ChevronDown, ChevronUp, Download, FileText, Layers, ExternalLink } from "lucide-react"
 
 // ── Types ──────────────────────────────────────────────────────────
 
 interface GeneratedDoc {
   id: string
+  job_id: string
   job_title: string
   company: string
   doc_type: string
@@ -14,6 +15,9 @@ interface GeneratedDoc {
   changes_made: string
   reasoning: string
   created_at: string
+  jobs?: {
+    source_url: string
+  }
 }
 
 // ── Accordion ─────────────────────────────────────────────────────
@@ -63,6 +67,12 @@ function TailoredDocCard({ doc }: { doc: GeneratedDoc }) {
     window.open(doc.file_path, "_blank")
   }
 
+  const handleApply = () => {
+    const url = doc.jobs?.source_url
+    if (!url) return
+    window.open(url, "_blank")
+  }
+
   return (
     <div className="border border-gray-200 rounded-xl p-5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
@@ -72,6 +82,15 @@ function TailoredDocCard({ doc }: { doc: GeneratedDoc }) {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <span className="font-sans text-[10px] text-gray-400">{new Date(doc.created_at).toLocaleDateString()}</span>
+          {doc.jobs?.source_url && (
+            <button
+              onClick={handleApply}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-gray-700 border border-gray-200 text-xs font-sans font-medium rounded-sm hover:bg-gray-50 transition-colors"
+            >
+              <ExternalLink size={11} />
+              Apply to Job
+            </button>
+          )}
           <button
             onClick={handleDownload}
             disabled={!doc.file_path}
@@ -117,7 +136,7 @@ export default function CoverLettersPage() {
     if (!user) return
     supabase
       .from("generated_docs")
-      .select("*")
+      .select("*, jobs(source_url)")
       .eq("doc_type", "cover_letter")
       .order("created_at", { ascending: false })
       .then(({ data }) => {

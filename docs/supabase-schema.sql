@@ -179,6 +179,7 @@ CREATE POLICY "candidate_memories: delete own" ON public.candidate_memories
 CREATE TABLE IF NOT EXISTS public.generated_docs (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  job_id        uuid REFERENCES public.jobs (id) ON DELETE CASCADE,
   job_title     text,
   company       text,
   doc_type      text,
