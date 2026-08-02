@@ -49,6 +49,41 @@ function getOpenAI(): OpenAI {
   return _openai
 }
 
+// ── JSON Sanitization Helper ──────────────────────────────────────
+
+function cleanAndParseJSON(rawText: string) {
+  let text = rawText.trim();
+  // Strip markdown code fences
+  text = text.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+
+  // Strip double-wrapped HTML payload anomalies
+  if (text.match(/^\{\s*"\{/)) {
+    text = text.replace(/^\{\s*"/, '');
+    text = text.replace(/"\s*\}$/, '');
+  }
+
+  // Isolate content between first '{' and last '}'
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    text = text.substring(start, end + 1);
+  }
+
+  // Repair leading key stutters like `{"key{"key":` -> `{"key":`
+  text = text.replace(/^\{\s*"[a-zA-Z0-9_]+\{\s*"/, '{"');
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    // Secondary attempt for wrapped stringified JSON
+    if (text.startsWith('"') && text.endsWith('"')) {
+      const inner = JSON.parse(text);
+      if (typeof inner === 'string') return JSON.parse(inner);
+    }
+    throw e;
+  }
+}
+
 // ── LLM Response Schema ─────────────────────────────────────────
 
 const RESPONSE_SCHEMA = {
@@ -161,32 +196,43 @@ ${JSON.stringify(RESPONSE_SCHEMA, null, 2)}
   console.log(`[analyzeJobText] Triggering NVIDIA DeepSeek V4 Model. Prompt length: ${prompt.length} chars.`)
   
   let completion;
-  try {
-    completion = await openai.chat.completions.create({
-      model: "deepseek-ai/deepseek-v4-flash",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 16384,
-      // @ts-ignore - NVIDIA specific kwarg for DeepSeek reasoning
-      chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
-      response_format: { type: "json_object" }
-    })
-  } catch (err: any) {
-    if (err.status === 529 || err.status === 429) {
-      console.warn(`[analyzeJobText] Upstream AI provider overloaded (${err.status}). Returning graceful fallback.`);
-      return {
-        company: "Unknown (AI Overloaded)",
-        role: "Unknown",
-        matchScore: 0,
-        verdict: "The AI provider is currently overloaded and could not analyze this job.",
-        matchesFound: [],
-        missingOrWeak: [],
-        humanInputRequired: []
+  let attempts = 0;
+  while (attempts < 3) {
+    attempts++;
+    try {
+      completion = await openai.chat.completions.create({
+        model: "deepseek-ai/deepseek-v4-flash",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 16384,
+        // @ts-ignore - NVIDIA specific kwarg for DeepSeek reasoning
+        chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
+        response_format: { type: "json_object" }
+      })
+      break;
+    } catch (err: any) {
+      if (err.status === 529 || err.status === 429) {
+        if (attempts < 3) {
+          const delay = attempts === 1 ? 5000 : 10000;
+          console.warn(`[analyzeJobText] ⚠️ Upstream AI provider overloaded (${err.status}). Retrying in ${delay}ms (Attempt ${attempts}/3)...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        console.warn(`[analyzeJobText] ❌ Upstream AI provider overloaded (${err.status}) after 3 attempts. Returning graceful fallback.`);
+        return {
+          company: "Unknown (AI Overloaded)",
+          role: "Unknown",
+          matchScore: 0,
+          verdict: "The AI provider is currently overloaded and could not analyze this job.",
+          matchesFound: [],
+          missingOrWeak: [],
+          humanInputRequired: []
+        }
       }
+      throw err;
     }
-    throw err;
   }
 
-  const msg = completion.choices[0]?.message as any
+  const msg = completion!.choices[0]?.message as any
   if (msg?.reasoning_content) {
     console.log(`[analyzeJobText] DeepSeek Reasoning: ${msg.reasoning_content.slice(0, 150).replace(/\\n/g, ' ')}...`)
   }
@@ -194,42 +240,21 @@ ${JSON.stringify(RESPONSE_SCHEMA, null, 2)}
   let rawText = (msg?.content || "").trim()
   console.log(`[analyzeJobText] NVIDIA responded with ${rawText.length} characters.`)
 
-  // 1. Remove markdown code blocks if present
-  rawText = rawText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
-
-  // 2. Strip accidental outer quotes if wrapped like "{ ... }"
-  if (rawText.startsWith('"') && rawText.endsWith('"')) {
-    rawText = rawText.slice(1, -1).trim();
-    rawText = rawText.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-  }
-
-  // 3. Extract strictly between the first '{' and last '}'
-  const firstBrace = rawText.indexOf('{');
-  const lastBrace = rawText.lastIndexOf('}');
-
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    rawText = rawText.substring(firstBrace, lastBrace + 1);
-  }
-
-  // 4. Safely parse with double-encoding protection
+  // Parse with stutter repair and double-encoding protection
   let parsed: JobAnalysisResult
   try {
-    let parsedData = JSON.parse(rawText);
-    if (typeof parsedData === 'string') {
-      parsedData = JSON.parse(parsedData);
-    }
-    parsed = parsedData as JobAnalysisResult;
-  } catch (e) {
-    console.error(`[analyzeJobText] ❌ DeepSeek parse error:`, rawText)
+    parsed = cleanAndParseJSON(rawText) as JobAnalysisResult;
+  } catch (error) {
+    console.log("[analyzeJobText] ❌ DeepSeek API or Parse Error:", error);
     return {
-      company: "Unknown",
-      role: "Unknown",
+      company: "Unknown Company",
+      role: "Unknown Role",
       matchScore: 0,
-      verdict: "The AI provider failed to format the analysis properly.",
+      verdict: "The AI provider returned a truncated or invalid response due to server load. Please click 'Retry Analysis' to try again.",
       matchesFound: [],
       missingOrWeak: [],
       humanInputRequired: []
-    }
+    };
   }
 
   // Clamp score
@@ -375,60 +400,50 @@ CRITICAL REQUIREMENT: You MUST respond ONLY with a single valid JSON object. Do 
 
   console.log(`[generateBespokeDocs] Calling NVIDIA DeepSeek model...`)
   let docCompletion;
-  try {
-    docCompletion = await openai.chat.completions.create({
-      model: "deepseek-ai/deepseek-v4-flash",
-      messages: [{ role: "user", content: docGenPrompt }],
-      max_tokens: 16384,
-      // @ts-ignore
-      chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
-      response_format: { type: "json_object" }
-    })
-  } catch (err: any) {
-    if (err.status === 529 || err.status === 429) {
-      console.warn(`[generateBespokeDocs] Upstream AI provider overloaded (${err.status}). Throwing AI_PROVIDER_OVERLOADED.`);
-      throw new Error("AI_PROVIDER_OVERLOADED");
+  let attempts = 0;
+  while (attempts < 3) {
+    attempts++;
+    try {
+      docCompletion = await openai.chat.completions.create({
+        model: "deepseek-ai/deepseek-v4-flash",
+        messages: [{ role: "user", content: docGenPrompt }],
+        max_tokens: 16384,
+        // @ts-ignore
+        chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
+        response_format: { type: "json_object" }
+      })
+      break;
+    } catch (err: any) {
+      if (err.status === 529 || err.status === 429) {
+        if (attempts < 3) {
+          const delay = attempts === 1 ? 5000 : 10000;
+          console.warn(`[generateBespokeDocs] ⚠️ Upstream AI provider overloaded (${err.status}). Retrying in ${delay}ms (Attempt ${attempts}/3)...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        console.warn(`[generateBespokeDocs] ❌ Upstream AI provider overloaded (${err.status}) after 3 attempts. Throwing AI_PROVIDER_OVERLOADED.`);
+        throw new Error("AI_PROVIDER_OVERLOADED");
+      }
+      throw err;
     }
-    throw err;
   }
 
-  const docMsg = docCompletion.choices[0]?.message as any
+  const docMsg = docCompletion!.choices[0]?.message as any
   if (docMsg?.reasoning_content) {
     console.log(`[generateBespokeDocs] DeepSeek Reasoning: ${docMsg.reasoning_content.slice(0, 150).replace(/\\n/g, ' ')}...`)
   }
 
   let rawDocText = (docMsg?.content || "{}").trim()
   
-  // 1. Remove markdown code blocks if present
-  rawDocText = rawDocText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
-
-  // 2. Strip accidental outer quotes if wrapped like "{ ... }"
-  if (rawDocText.startsWith('"') && rawDocText.endsWith('"')) {
-    rawDocText = rawDocText.slice(1, -1).trim();
-    rawDocText = rawDocText.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-  }
-
-  // 3. Extract strictly between the first '{' and last '}'
-  const firstBrace = rawDocText.indexOf('{');
-  const lastBrace = rawDocText.lastIndexOf('}');
-
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    rawDocText = rawDocText.substring(firstBrace, lastBrace + 1);
-  }
-
-  // 4. Safely parse with double-encoding protection
+  // Parse with stutter repair and double-encoding protection
   let docs;
   try {
-    let parsedData = JSON.parse(rawDocText);
-    if (typeof parsedData === 'string') {
-      parsedData = JSON.parse(parsedData);
-    }
-    docs = parsedData;
+    docs = cleanAndParseJSON(rawDocText);
   } catch (e) {
     console.error(`[generateBespokeDocs] ❌ DeepSeek parse error:`, rawDocText)
     docs = {
-      resumeHtml: "<html><body style='font-family:Lato; padding:40px'><h1>Resume</h1><p>AI formatting error. No resume generated.</p></body></html>",
-      coverLetterHtml: "<html><body style='font-family:Lato; padding:40px'><h1>Cover Letter</h1><p>AI formatting error. No cover letter generated.</p></body></html>",
+      resumeHtml: "<html><body style='font-family:Lato; padding:40px'><h1>Resume Generation Failed</h1><p>Please review raw output.</p></body></html>",
+      coverLetterHtml: "<html><body style='font-family:Lato; padding:40px'><h1>Cover Letter Generation Failed</h1><p>Please review raw output.</p></body></html>",
       changes_made: "Fallback mode activated due to AI parse error.",
       reasoning: "DeepSeek failed to format response correctly."
     }
@@ -766,6 +781,66 @@ export async function seedHarvester(req: Request, res: Response): Promise<void> 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[seedHarvester] ❌ Unhandled error:`, message)
+    res.status(500).json({ error: 'Internal Server Error', message })
+  }
+}
+
+// ── Reject Job & Cascading Delete ─────────────────────────────────
+
+export async function deleteJob(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+
+  try {
+    // 1. Check generated_docs for associated documents
+    const { data: docs } = await supabase
+      .from('generated_docs')
+      .select('resume_url, cover_letter_url')
+      .eq('job_id', id)
+      .single()
+
+    // 2. Delete files from Supabase Storage if they exist
+    if (docs) {
+      const pathsToDelete: string[] = []
+      const extractPath = (url: string | null) => {
+        if (!url) return null
+        // URL format: https://.../storage/v1/object/public/documents/[user_id]/[file_name]
+        const match = url.match(/\/documents\/(.+)$/)
+        return match ? match[1] : null
+      }
+
+      const resumePath = extractPath(docs.resume_url)
+      const coverLetterPath = extractPath(docs.cover_letter_url)
+
+      if (resumePath) pathsToDelete.push(resumePath)
+      if (coverLetterPath) pathsToDelete.push(coverLetterPath)
+
+      if (pathsToDelete.length > 0) {
+        console.log(`[deleteJob] Deleting ${pathsToDelete.length} files from storage for job ${id}...`)
+        const { error: storageError } = await supabase.storage.from('documents').remove(pathsToDelete)
+        if (storageError) {
+          console.error('[deleteJob] ❌ Failed to delete storage files:', storageError.message)
+          // Continue with DB row deletion anyway
+        }
+      }
+    }
+
+    // 3. Delete from jobs (cascades to generated_docs)
+    const { error: deleteError } = await supabase
+      .from('jobs')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) {
+      console.error('[deleteJob] ❌ Database delete error:', deleteError.message)
+      res.status(500).json({ error: 'Database Delete Failed', message: deleteError.message })
+      return
+    }
+
+    console.log(`[deleteJob] ✅ Job ${id} and associated assets successfully deleted.`)
+    res.status(200).json({ success: true, message: 'Job deleted successfully' })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[deleteJob] ❌ Unhandled error:`, message)
     res.status(500).json({ error: 'Internal Server Error', message })
   }
 }

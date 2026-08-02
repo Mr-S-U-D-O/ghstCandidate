@@ -15,6 +15,7 @@ interface MatchReportPanelProps {
   onApprove: (id: string) => void
   onReject: (id: string) => void
   onNeedsInput: (id: string, missingField: string) => void
+  onJobUpdated?: () => void
 }
 
 // ── Match Badge ───────────────────────────────────────────────────
@@ -52,6 +53,63 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
   const [requiresLogin, setRequiresLogin] = useState(false)
   const [jitAnswer, setJitAnswer] = useState('')
   const [isSavingAnswer, setIsSavingAnswer] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
+
+  const handleRetryAnalysis = async () => {
+    if (!job || !job.sourceUrl) return
+    setIsRetrying(true)
+    setError(null)
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const res = await fetch(`${API_BASE_URL}/api/analyze-job`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify({
+          url: job.sourceUrl,
+          candidateProfile: candidateProfile || {},
+          userId: user?.id
+        })
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message ?? "Analysis failed.")
+      }
+
+      const data = await res.json()
+
+      const { error: updateError } = await supabase
+        .from('jobs')
+        .update({
+          company: data.company,
+          title: data.role,
+          match_score: data.matchScore,
+          verdict: data.verdict,
+          matches_found: data.matchesFound,
+          missing_or_weak: data.missingOrWeak,
+          human_input_required: data.humanInputRequired
+        })
+        .eq('id', job.id)
+
+      if (updateError) throw updateError
+
+      if (arguments[0]?.onJobUpdated) {
+        arguments[0].onJobUpdated()
+      } else {
+        onClose()
+      }
+    } catch (err) {
+      setError("Retry failed. Check backend logs.")
+      console.error(err)
+    } finally {
+      setIsRetrying(false)
+    }
+  }
 
   const handleApprove = async () => {
     console.log("[MatchReportPanel] handleRunAgent clicked for job ID:", job?.id)
@@ -147,6 +205,7 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
       setNeedsInputQuestion(null)
       setRequiresLogin(false)
       setJitAnswer('')
+      setIsRetrying(false)
     }
   }, [isOpen, job?.id])
 
@@ -344,12 +403,18 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
               {/* Standard footer actions */}
               {!needsInputQuestion && !requiresLogin && (
                 <div className="flex items-center justify-between gap-3">
-                  <button onClick={handleReject} disabled={isApplying} className="px-5 py-2.5 bg-white text-gray-600 font-sans font-medium text-sm rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50">
+                  <button onClick={handleReject} disabled={isApplying || isRetrying} className="px-5 py-2.5 bg-white text-gray-600 font-sans font-medium text-sm rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50">
                     Reject Job
                   </button>
-                  <button onClick={handleApprove} disabled={isApplying} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50">
-                    {isApplying ? <><Loader2 size={14} className="animate-spin" /> Ghost is running...</> : 'Generate Documents & Apply'}
-                  </button>
+                  {job.verdict?.includes("Retry Analysis") ? (
+                    <button onClick={handleRetryAnalysis} disabled={isRetrying} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50">
+                      {isRetrying ? <><Loader2 size={14} className="animate-spin" /> Retrying...</> : 'Retry Analysis'}
+                    </button>
+                  ) : (
+                    <button onClick={handleApprove} disabled={isApplying} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50">
+                      {isApplying ? <><Loader2 size={14} className="animate-spin" /> Ghost is running...</> : 'Generate Documents & Apply'}
+                    </button>
+                  )}
                 </div>
               )}
 

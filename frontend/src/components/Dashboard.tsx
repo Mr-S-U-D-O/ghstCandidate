@@ -16,8 +16,6 @@ import {
   Settings,
   Search,
   Play,
-  ChevronRight,
-  Check,
   X,
   Clock,
   AlertCircle,
@@ -106,21 +104,124 @@ function MatchBadge({ score, needsInput, missingField }: { score: number; needsI
 interface JobCardProps {
   job: Job
   onApprove?: (id: string) => void
-  onReject?: (id: string) => void
+  onReject?: (id: string) => Promise<void>
   onSelect?: (job: Job) => void
 }
 
 function JobCard({ job, onReject, onSelect }: JobCardProps) {
   const [hovered, setHovered] = useState(false)
+  const [isRejecting, setIsRejecting] = useState(false)
+
+  const handleRejectClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!onReject) return
+    setIsRejecting(true)
+    try {
+      // Assuming onReject returns a Promise now
+      await onReject(job.id)
+    } catch (err) {
+      console.error(err)
+      setIsRejecting(false)
+    }
+  }
+
+  const renderActionButtons = () => {
+    if (job.column === 'applied') {
+      return (
+        <div className="flex items-center gap-1.5">
+          {onReject && (
+            <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
+              {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
+              {isRejecting ? 'Archiving' : 'Archive'}
+            </button>
+          )}
+          {job.sourceUrl && (
+            <a href={job.sourceUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 px-3 py-1.5 bg-[#0A0A0A] text-white text-xs font-sans font-medium rounded-sm hover:bg-gray-800 transition-colors">
+              View Posting
+            </a>
+          )}
+        </div>
+      )
+    }
+
+    if (job.needsInput) {
+      return (
+        <div className="flex items-center gap-1.5">
+          {onReject && (
+            <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
+              {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
+              Reject
+            </button>
+          )}
+          <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 text-amber-700 text-xs font-sans font-medium rounded-sm border border-amber-200 hover:bg-amber-100 transition-colors">
+            Resolve & Resume Agent
+          </button>
+        </div>
+      )
+    }
+
+    const isAnalysisFailed = job.verdict?.includes("Retry Analysis") || (job.company === "Unknown Company" && job.matchScore === 0)
+    const isUnanalyzed = !job.verdict && job.matchScore === 0 && (job.company === "Unknown" || job.company === "Unknown Company")
+
+    if (isAnalysisFailed) {
+      return (
+        <div className="flex items-center gap-1.5">
+          {onReject && (
+            <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
+              {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
+              Reject
+            </button>
+          )}
+          <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:bg-gray-200 transition-colors">
+            Retry Analysis
+          </button>
+        </div>
+      )
+    }
+
+    if (isUnanalyzed) {
+      return (
+        <div className="flex items-center gap-1.5">
+          {onReject && (
+            <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
+              {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
+              Reject
+            </button>
+          )}
+          <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-sans font-medium rounded-sm border border-blue-200 hover:bg-blue-100 transition-colors">
+            Run AI Scraper
+          </button>
+        </div>
+      )
+    }
+
+    // Default: Awaiting Approval (State C)
+    return (
+      <div className="flex items-center gap-1.5">
+        {onReject && (
+          <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
+            {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
+            Reject
+          </button>
+        )}
+        <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-[#0A0A0A] text-white text-xs font-sans font-medium rounded-sm hover:bg-gray-800 transition-colors">
+          Generate Documents & Apply
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div
-      className="bg-white border border-gray-200 rounded-xl p-5 cursor-pointer group"
+      className="bg-white border border-gray-200 rounded-xl p-5 cursor-pointer group flex flex-col"
       style={{ boxShadow: hovered ? "0 4px 12px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.06)", transition: "box-shadow 0.2s ease" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => {
-        console.log(`[Dashboard] JobCard clicked: ${job.title} at ${job.company} (ID: ${job.id})`)
-        onSelect?.(job)
+        if (!isRejecting) {
+          console.log(`[Dashboard] JobCard clicked: ${job.title} at ${job.company} (ID: ${job.id})`)
+          onSelect?.(job)
+        }
       }}
     >
       <div className="flex items-start justify-between mb-3">
@@ -132,21 +233,19 @@ function JobCard({ job, onReject, onSelect }: JobCardProps) {
       </div>
       <p className="font-sans text-sm text-gray-700 leading-snug mb-1">{job.title}</p>
       <p className="font-sans text-xs text-gray-400 mb-4">{job.location}</p>
-      <div className="flex items-center justify-between">
-        <MatchBadge score={job.matchScore} needsInput={job.needsInput} missingField={job.missingField} />
-        {job.column === "review" && onReject && (
-          <div className="flex items-center gap-1.5">
-            <button onClick={(e) => { e.stopPropagation(); onReject(job.id) }} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
-              <X size={11} strokeWidth={2.5} />Reject
-            </button>
-          </div>
-        )}
-        {job.column === "applied" && (
-          <span className="flex items-center gap-1 text-xs font-sans text-green-700"><Check size={11} strokeWidth={2.5} />Submitted</span>
-        )}
-        {job.column === "discovered" && (
-          <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
-        )}
+
+      {job.needsInput && (
+        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+          <p className="font-sans text-xs font-medium text-amber-800 flex items-center gap-1.5">
+            <AlertCircle size={12} strokeWidth={2} /> 
+            {job.missingField || "Agent Paralyzed"}
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mt-auto">
+        <MatchBadge score={job.matchScore} />
+        {renderActionButtons()}
       </div>
     </div>
   )
@@ -278,7 +377,7 @@ function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: {
   column: typeof COLUMNS[number]
   jobs: Job[]
   onApprove: (id: string) => void
-  onReject: (id: string) => void
+  onReject: (id: string) => Promise<void>
   onSelect: (job: Job) => void
 }) {
   return (
@@ -461,14 +560,28 @@ export default function Dashboard() {
     }
   }
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
     console.log("[Dashboard] handleReject clicked for job ID:", id)
-    setJobs((prev) => prev.filter((j) => j.id !== id))
-    setSelectedJob((prev) => prev?.id === id ? null : prev)
-    // Delete from Supabase
-    if (user) {
-      supabase.from('jobs').delete().eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error('[Dashboard] Failed to delete job:', error.message) })
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const res = await fetch(`${API_BASE_URL}/api/jobs/${id}`, {
+        method: "DELETE",
+        headers: {
+          ...(session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {})
+        }
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to delete job on backend")
+      }
+
+      setJobs((prev) => prev.filter((j) => j.id !== id))
+      setSelectedJob((prev) => prev?.id === id ? null : prev)
+    } catch (err) {
+      console.error('[Dashboard] ❌ handleReject error:', err)
+      // Fallback local UI removal or re-throw
+      throw err
     }
   }
 

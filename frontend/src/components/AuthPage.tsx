@@ -80,8 +80,8 @@ export default function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({ provider })
       if (error) throw error
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An unknown error occurred.'
+    } catch (err: any) {
+      const message = err?.message || 'An unknown error occurred.'
       setError(getFriendlyErrorMessage(message))
       setOAuthLoading(null)
     }

@@ -1,7 +1,7 @@
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
-import { analyzeJob, applyJob, huntJobs, seedHarvester } from "./controllers/jobController.js"
+import { analyzeJob, applyJob, huntJobs, seedHarvester, deleteJob } from "./controllers/jobController.js"
 import { parseCv } from "./controllers/cvController.js"
 import { chatProfiler } from "./controllers/chatController.js"
 import { runAgent } from "./controllers/agentController.js"
@@ -46,6 +46,7 @@ app.post("/api/chat-profiler", chatProfiler)
 app.post("/api/run-agent", runAgent)
 app.delete("/api/user/account", deleteAccount)
 app.post("/api/waitlist", joinWaitlist)
+app.delete("/api/jobs/:id", deleteJob)
 
 // 404 catch-all
 app.use((_req, res) => {

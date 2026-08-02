@@ -152,7 +152,7 @@ ${memoriesText}
   const stagehand: any = new Stagehand({
     env: "LOCAL",
     model: {
-      modelName: "deepseek-ai/deepseek-v4-flash",
+      modelName: "openai/deepseek-ai/deepseek-v4-flash",
       apiKey: process.env.NVIDIA_API_KEY,
       baseURL: "https://integrate.api.nvidia.com/v1"
     },
@@ -251,19 +251,44 @@ ${memoriesText}
           console.warn(`[runAgent] Could not capture JD text inline:`, e);
         }
 
-        const docs = await generateBespokeDocs({
-          jdText,
-          candidateProfile,
-          memories,
-          userId,
-          jobId,
-          jobTitle: jobTitle || "Unknown Role",
-          company: company || "Unknown Company",
-          scopedSupabase,
-        });
+        let docs;
+        const { data: existingDocs } = await scopedSupabase
+          .from('generated_docs')
+          .select('resume_url, cover_letter_url')
+          .eq('job_id', jobId)
+          .maybeSingle();
+
+        if (existingDocs && existingDocs.resume_url) {
+          console.log(`[runAgent] Existing JIT documents found. Bypassing generation.`);
+          try {
+            const pdfRes = await fetch(existingDocs.resume_url);
+            const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+            docs = {
+              resumeUrl: existingDocs.resume_url,
+              coverLetterUrl: existingDocs.cover_letter_url,
+              resumePdfBuffer: pdfBuffer
+            };
+          } catch (e) {
+            console.warn(`[runAgent] Failed to fetch existing PDF, falling back to generation:`, e);
+          }
+        }
+
+        if (!docs) {
+          docs = await generateBespokeDocs({
+            jdText,
+            candidateProfile,
+            memories,
+            userId,
+            jobId,
+            jobTitle: jobTitle || "Unknown Role",
+            company: company || "Unknown Company",
+            scopedSupabase,
+          });
+        }
+        
         hasGeneratedDocs = true;
         console.log(
-          `[runAgent] \u2705 JIT docs generated. Resume URL: ${docs.resumeUrl}`,
+          `[runAgent] \u2705 JIT docs ready. Resume URL: ${docs.resumeUrl}`,
         );
 
         // Upload PDF to file input
@@ -313,10 +338,31 @@ ${profileContext}
   5. CRITICAL: If you encounter a mandatory form question you cannot answer using the provided profile or memories, immediately stop and throw an error starting exactly with "NEEDS_INPUT: " followed by the question text.
   6. CRITICAL SELF-HEALING REFLEX: If you click 'Submit' and the page does not transition, OR if you observe a red form validation error (e.g., 'Resume/CV is required', 'This field is required'), DO NOT click submit again immediately. You must observe the error, find the missing or incorrect field, and act to fix it (e.g., fill in the missing text). ONLY attempt to click 'Submit' again after attempting a fix. IF the error asks for a file you do not have, or information you do not know, THEN you must immediately STOP and throw a fatal error starting with 'NEEDS_INPUT:'.
   7. EXHAUSTIVE EXECUTION RULE: You MUST scroll down and verify every single input field on the page. Do NOT click submit until you have actively verified there are no empty mandatory dropdowns, checkboxes, or textboxes remaining. You must proactively identify and fill EVERY single required input field before attempting to click the 'Submit' button. IF a required field asks a question that cannot be answered using the provided candidate profile context, you MUST immediately STOP and throw a fatal error starting exactly with 'NEEDS_INPUT: [Name of the specific missing field]'.
+  8. ANTI-SHORTCUT RULE: You are strictly FORBIDDEN from clicking any buttons that say 'Apply with LinkedIn', 'Apply with Indeed', 'Quick Apply with MyGreenhouse', 'Sign In', or any other third-party login or SSO shortcuts. You MUST stay on the current page and fill out the raw application form manually.
       `.trim();
 
       try {
-        const actResult = await stagehand.act(instruction);
+        let actResult;
+        let actAttempts = 0;
+        while (actAttempts < 3) {
+          actAttempts++;
+          try {
+            actResult = await stagehand.act(instruction);
+            break;
+          } catch (innerErr: any) {
+            const msg: string = innerErr?.message ?? String(innerErr);
+            if (msg.includes("529") || msg.includes("429") || msg.includes("AI_PROVIDER_OVERLOADED")) {
+              if (actAttempts < 3) {
+                const delay = actAttempts === 1 ? 5000 : 10000;
+                console.warn(`[runAgent] ⚠️ Upstream AI provider overloaded. Retrying in ${delay}ms (Attempt ${actAttempts}/3)...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+            }
+            throw innerErr;
+          }
+        }
+        
         console.log(
           `[runAgent] ✅ Stagehand act() completed iteration ${stepCount}.`,
         );
