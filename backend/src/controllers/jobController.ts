@@ -455,14 +455,25 @@ CRITICAL REQUIREMENT: You MUST respond ONLY with a single valid JSON object. Do 
   const browser = await chromium.launch({ headless: true })
   let resumePdfBuffer: Buffer
   let coverLetterPdfBuffer: Buffer
+
+  const safeResumeHtml = docs.resumeHtml 
+    || docs.resume_html 
+    || docs.resume 
+    || "<html><body><h1>Resume Error</h1><p>The AI failed to generate the resume HTML.</p></body></html>";
+
+  const safeCoverLetterHtml = docs.coverLetterHtml 
+    || docs.cover_letter_html 
+    || docs.coverLetter 
+    || "<html><body><h1>Cover Letter Error</h1><p>The AI failed to generate the cover letter HTML.</p></body></html>";
+
   try {
     const renderContext = await browser.newContext()
     const renderPage = await renderContext.newPage()
 
-    await renderPage.setContent(docs.resumeHtml, { waitUntil: "networkidle" })
+    await renderPage.setContent(safeResumeHtml, { waitUntil: "networkidle" })
     resumePdfBuffer = await renderPage.pdf({ format: 'A4' })
 
-    await renderPage.setContent(docs.coverLetterHtml, { waitUntil: "networkidle" })
+    await renderPage.setContent(safeCoverLetterHtml, { waitUntil: "networkidle" })
     coverLetterPdfBuffer = await renderPage.pdf({ format: 'A4' })
 
     await renderContext.close()
