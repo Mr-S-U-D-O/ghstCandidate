@@ -43,6 +43,13 @@ export default function AuthPage() {
     setError(null)
     setIsLoading(true)
 
+    const vipList = ['molelekishoez@gmail.com', 'tester@gmail.com']
+    if (!vipList.includes(email.toLowerCase())) {
+      setError('We are currently in closed beta. Please join the waitlist on the home page.')
+      setIsLoading(false)
+      return
+    }
+
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password })
@@ -65,6 +72,9 @@ export default function AuthPage() {
   }
 
   const handleOAuth = async (provider: 'google' | 'linkedin_oidc') => {
+    setError('OAuth is disabled during closed beta. Please join the waitlist on the home page.')
+    return
+    
     setError(null)
     setOAuthLoading(provider)
     try {
@@ -150,7 +160,7 @@ export default function AuthPage() {
                 onChange={e => setEmail(e.target.value)}
                 placeholder={placeholders.email}
                 required
-                className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
+                className="w-full bg-transparent border-b border-black py-2.5 font-sans text-base md:text-sm placeholder-gray-400 focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -162,7 +172,7 @@ export default function AuthPage() {
                 placeholder={placeholders.password}
                 required
                 minLength={6}
-                className="w-full border border-gray-300 rounded-[2px] bg-gray-50 px-3 py-2.5 font-sans text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-shadow"
+                className="w-full bg-transparent border-b border-black py-2.5 font-sans text-base md:text-sm placeholder-gray-400 focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors"
               />
             </div>
 

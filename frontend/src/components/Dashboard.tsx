@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext } from "react"
+import { useNavigate } from "react-router-dom"
 import MatchReportPanel from "./MatchReportPanel"
 import GhostChat from "./GhostChat"
 import ProfileHub from "./ProfileHub"
 import ResumesPage from "./ResumesPage"
 import CoverLettersPage from "./CoverLettersPage"
+import DeleteAccountModal from "./DeleteAccountModal"
 import { UserContext } from "../context/UserContext"
 import { supabase } from "../supabaseClient"
 
@@ -57,6 +59,17 @@ const COLUMNS: { id: ColumnId; label: string; description: string }[] = [
   { id: "applied", label: "Applied", description: "Handled by your Ghost" },
 ]
 
+// ── Tech Roles (Data Lake niche) ──────────────────────────────────
+
+const TECH_ROLES = [
+  "Web Developer",
+  "Frontend Developer",
+  "Backend Developer",
+  "Fullstack Engineer",
+  "UI/UX Designer",
+  "Product Manager",
+]
+
 // ── Match Badge ───────────────────────────────────────────────────
 
 function MatchBadge({ score, needsInput, missingField }: { score: number; needsInput?: boolean; missingField?: string }) {
@@ -97,7 +110,7 @@ interface JobCardProps {
   onSelect?: (job: Job) => void
 }
 
-function JobCard({ job, onApprove, onReject, onSelect }: JobCardProps) {
+function JobCard({ job, onReject, onSelect }: JobCardProps) {
   const [hovered, setHovered] = useState(false)
   return (
     <div
@@ -153,6 +166,29 @@ const NAV_ITEMS: { id: NavPage; label: string; Icon: React.ElementType }[] = [
 ]
 
 function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose, candidateProfile }: { activePage: NavPage; onNavigate: (p: NavPage) => void; ghostPulse?: boolean; isOpen?: boolean; onClose?: () => void; candidateProfile?: any }) {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const menuRef = React.useRef<HTMLDivElement>(null)
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/auth'
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false)
+      }
+    }
+    if (isUserMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isUserMenuOpen])
+
   return (
     <>
       {isOpen && (
@@ -181,7 +217,7 @@ function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose, candidat
           )
         })}
       </nav>
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-4 border-t border-gray-100 relative" ref={menuRef}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
             <span className="font-sans font-bold text-xs text-white">
@@ -192,9 +228,46 @@ function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose, candidat
             <p className="font-sans font-medium text-xs text-[#0A0A0A] truncate">{candidateProfile?.name || 'Candidate'}</p>
             <p className="font-sans text-xs text-gray-400">Free tier</p>
           </div>
+          <button 
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} 
+            className="text-gray-400 hover:text-[#0A0A0A] transition-colors p-1.5 rounded-md hover:bg-gray-50 flex-shrink-0"
+            aria-label="User Settings"
+          >
+            <Settings size={18} strokeWidth={1.5} />
+          </button>
         </div>
+
+        {isUserMenuOpen && (
+          <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="px-5 py-3 border-b border-gray-100 mb-1">
+              <p className="font-heading text-sm font-bold text-[#0A0A0A] truncate">{candidateProfile?.name || 'Candidate'}</p>
+            </div>
+            <button className="w-full text-left px-5 py-3 font-sans text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#0A0A0A] transition-colors">
+              Account Settings
+            </button>
+            <button className="w-full text-left px-5 py-3 font-sans text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#0A0A0A] transition-colors">
+              Manage Subscription
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="w-full text-left px-5 py-3 font-sans text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#0A0A0A] transition-colors">
+              Sign Out
+            </button>
+            <hr className="my-2 border-gray-100" />
+            <button
+              onClick={() => { setIsUserMenuOpen(false); setIsDeleteModalOpen(true) }}
+              className="w-full text-left px-5 py-3 font-sans text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+              Delete Account
+            </button>
+          </div>
+        )}
       </div>
     </aside>
+    <DeleteAccountModal
+      isOpen={isDeleteModalOpen}
+      onClose={() => setIsDeleteModalOpen(false)}
+      userName={candidateProfile?.name || 'Candidate'}
+    />
     </>
   )
 }
@@ -234,6 +307,8 @@ function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: {
 
 export default function Dashboard() {
   const { user, candidateProfile } = useContext(UserContext)
+  const navigate = useNavigate()
+  
   const [activePage, setActivePage] = useState<NavPage>("dashboard")
   const [jobs, setJobs] = useState<Job[]>([])
   const [jobUrlInput, setJobUrlInput] = useState("")
@@ -367,6 +442,10 @@ export default function Dashboard() {
   }
 
   const navigateTo = (page: NavPage) => {
+    if (page === 'settings') {
+      navigate('/settings')
+      return
+    }
     if (page === 'chat') setGhostPulse(false)
     setActivePage(page)
   }
@@ -523,7 +602,7 @@ export default function Dashboard() {
             <header className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-5 flex flex-col gap-3 shrink-0">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
                 <div className="flex items-center gap-4 shrink-0 justify-between md:justify-start">
-                  <h1 className="font-heading font-bold text-xl md:text-2xl text-[#0A0A0A]">Job Tracker</h1>
+
                   
                   {/* Mode Toggle */}
                   <div className="flex bg-gray-100 p-0.5 rounded-sm">
@@ -546,14 +625,19 @@ export default function Dashboard() {
                   <div className="flex-1 flex flex-col">
                     <div className="flex flex-col md:flex-row gap-3">
                       <div className="flex-1 relative">
-                        <input
-                          type="text"
+                        <label className="block font-heading text-xs font-medium text-[#0A0A0A] mb-1.5 tracking-wide">Role</label>
+                        <select
                           value={hunterRole}
                           onChange={(e) => setHunterRole(e.target.value)}
-                          placeholder="Role (e.g. Frontend Engineer)"
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 focus:outline-none focus:border-[#0A0A0A] appearance-none cursor-pointer"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                           disabled={hunterRunning}
-                        />
+                        >
+                          <option value="" disabled>Select a role</option>
+                          {TECH_ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="w-full md:w-48 relative">
                         <input

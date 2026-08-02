@@ -94,8 +94,8 @@ const Hero = () => (
 
       {/* CTA */}
       <div className="mt-10 flex flex-col items-center justify-center gap-3">
-        <Button variant="primary" size="lg" to="/auth?mode=signup">
-          Get Started
+        <Button variant="primary" size="lg" to="/waitlist">
+          Join Waitlist
           <ArrowRight size={16} strokeWidth={2} />
         </Button>
         <div className="flex flex-row items-center gap-2 font-sans text-sm text-gray-400 justify-center">
@@ -377,8 +377,8 @@ const FinalCTA = () => (
         </p>
       </div>
       <div className="mt-10 flex justify-center">
-        <Button variant="primary" size="lg" to="/auth?mode=signup">
-          Start Your Free Trial
+        <Button variant="primary" size="lg" to="/waitlist">
+          Join Waitlist
           <ArrowRight size={16} strokeWidth={2} />
         </Button>
       </div>

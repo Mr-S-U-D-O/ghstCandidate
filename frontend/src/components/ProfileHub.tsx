@@ -216,7 +216,7 @@ export default function ProfileHub() {
                       placeholder="e.g., Preferred Framework"
                       value={newKey}
                       onChange={e => setNewKey(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-sm font-sans text-sm focus:outline-none focus:border-black placeholder:text-gray-300"
+                      className="w-full py-2 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400 font-sans text-sm"
                     />
                   </div>
                   <div className="flex-[2]">
@@ -227,7 +227,7 @@ export default function ProfileHub() {
                       placeholder="e.g., Tailwind CSS"
                       value={newValue}
                       onChange={e => setNewValue(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-sm font-sans text-sm focus:outline-none focus:border-black placeholder:text-gray-300"
+                      className="w-full py-2 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400 font-sans text-sm"
                     />
                   </div>
                   <button type="submit" className="flex items-center justify-center gap-2 px-6 py-2 bg-[#0A0A0A] text-white text-sm font-sans font-medium rounded-sm hover:bg-gray-800 transition-colors h-[38px]">

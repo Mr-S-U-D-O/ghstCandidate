@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai"
+import OpenAI from "openai"
 import { chromium, BrowserContext } from "playwright"
 import { supabase } from "../supabaseClient.js"
 import { createClient } from "@supabase/supabase-js"
-import { fetchFromJSearch, fetchFromIndeed, fetchFromReed, fetchFromTheirstack } from "../utils/jobAdapter.js"
+import { harvestAllSources } from "../utils/jobAdapter.js"
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -33,41 +33,44 @@ export interface JobAnalysisResult {
   humanInputRequired: string[]
 }
 
-// ── Gemini Client (lazy singleton) ────────────────────────────────
+// ── NVIDIA Client (lazy singleton) ────────────────────────────────
 
-let _genAI: GoogleGenerativeAI | null = null
+let _openai: OpenAI | null = null
 
-function getGenAI(): GoogleGenerativeAI {
-  if (!_genAI) {
-    const key = process.env.GEMINI_API_KEY
-    if (!key) throw new Error("GEMINI_API_KEY is not set in environment variables.")
-    _genAI = new GoogleGenerativeAI(key)
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const key = process.env.NVIDIA_API_KEY
+    if (!key) throw new Error("NVIDIA_API_KEY is not set in environment variables.")
+    _openai = new OpenAI({
+      apiKey: key,
+      baseURL: "https://integrate.api.nvidia.com/v1"
+    })
   }
-  return _genAI
+  return _openai
 }
 
-// ── Gemini Response Schema ─────────────────────────────────────────
+// ── LLM Response Schema ─────────────────────────────────────────
 
 const RESPONSE_SCHEMA = {
-  type: SchemaType.OBJECT,
+  type: "object",
   properties: {
-    company:  { type: SchemaType.STRING, description: "Company name extracted from the job description" },
-    role:     { type: SchemaType.STRING, description: "Job title extracted from the job description" },
-    matchScore: { type: SchemaType.NUMBER, description: "Integer 0-100: how well the candidate matches this role" },
-    verdict:  { type: SchemaType.STRING, description: "2-3 sentence honest summary. Reference specific skills or requirements from the JD." },
+    company:  { type: "string", description: "Company name extracted from the job description" },
+    role:     { type: "string", description: "Job title extracted from the job description" },
+    matchScore: { type: "number", description: "Integer 0-100: how well the candidate matches this role" },
+    verdict:  { type: "string", description: "2-3 sentence honest summary. Reference specific skills or requirements from the JD." },
     matchesFound: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
+      type: "array",
+      items: { type: "string" },
       description: "3-5 specific skills/experiences from the candidate profile that match the JD requirements"
     },
     missingOrWeak: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
+      type: "array",
+      items: { type: "string" },
       description: "1-3 honest skill gaps relative to the JD. Empty array if none."
     },
     humanInputRequired: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
+      type: "array",
+      items: { type: "string" },
       description: "Fields the Ghost cannot auto-fill: salary, visa, portfolio, cover letter. Empty array if none."
     }
   },
@@ -147,34 +150,90 @@ ${truncated}
 - List 1-3 real gaps. Empty array if none.
 - List any application fields a bot cannot fill (salary, visa, cover letter). Empty array if none.
 - Write a verdict: 2-3 sentences, specific to THIS pairing.
+
+CRITICAL REQUIREMENT: You MUST respond ONLY with a single valid JSON object. Do not include markdown formatting, thought preambles, or unclosed syntax.
+${JSON.stringify(RESPONSE_SCHEMA, null, 2)}
 `.trim()
 
-  // Step 3: Call Gemini
-  const genAI = getGenAI()
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA as any,
-    },
-  })
+  // Step 3: Call OpenAI (NVIDIA DeepSeek)
+  const openai = getOpenAI()
 
-  console.log(`[analyzeJobText] Triggering Gemini AI Model (${process.env.GEMINI_MODEL || "gemini-flash-lite-latest"}). Prompt length: ${prompt.length} chars.`)
+  console.log(`[analyzeJobText] Triggering NVIDIA DeepSeek V4 Model. Prompt length: ${prompt.length} chars.`)
   
-  const result = await model.generateContent(prompt)
-  const rawText = result.response.text().trim()
-  console.log(`[analyzeJobText] Gemini responded with ${rawText.length} characters.`)
+  let completion;
+  try {
+    completion = await openai.chat.completions.create({
+      model: "deepseek-ai/deepseek-v4-flash",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 16384,
+      // @ts-ignore - NVIDIA specific kwarg for DeepSeek reasoning
+      chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
+      response_format: { type: "json_object" }
+    })
+  } catch (err: any) {
+    if (err.status === 529 || err.status === 429) {
+      console.warn(`[analyzeJobText] Upstream AI provider overloaded (${err.status}). Returning graceful fallback.`);
+      return {
+        company: "Unknown (AI Overloaded)",
+        role: "Unknown",
+        matchScore: 0,
+        verdict: "The AI provider is currently overloaded and could not analyze this job.",
+        matchesFound: [],
+        missingOrWeak: [],
+        humanInputRequired: []
+      }
+    }
+    throw err;
+  }
 
-  // Step 4: Parse
+  const msg = completion.choices[0]?.message as any
+  if (msg?.reasoning_content) {
+    console.log(`[analyzeJobText] DeepSeek Reasoning: ${msg.reasoning_content.slice(0, 150).replace(/\\n/g, ' ')}...`)
+  }
+
+  let rawText = (msg?.content || "").trim()
+  console.log(`[analyzeJobText] NVIDIA responded with ${rawText.length} characters.`)
+
+  // 1. Remove markdown code blocks if present
+  rawText = rawText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+
+  // 2. Strip accidental outer quotes if wrapped like "{ ... }"
+  if (rawText.startsWith('"') && rawText.endsWith('"')) {
+    rawText = rawText.slice(1, -1).trim();
+    rawText = rawText.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+  }
+
+  // 3. Extract strictly between the first '{' and last '}'
+  const firstBrace = rawText.indexOf('{');
+  const lastBrace = rawText.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    rawText = rawText.substring(firstBrace, lastBrace + 1);
+  }
+
+  // 4. Safely parse with double-encoding protection
   let parsed: JobAnalysisResult
   try {
-    parsed = JSON.parse(rawText) as JobAnalysisResult
+    let parsedData = JSON.parse(rawText);
+    if (typeof parsedData === 'string') {
+      parsedData = JSON.parse(parsedData);
+    }
+    parsed = parsedData as JobAnalysisResult;
   } catch (e) {
-    throw new Error(`Gemini parse error: ${rawText}`)
+    console.error(`[analyzeJobText] ❌ DeepSeek parse error:`, rawText)
+    return {
+      company: "Unknown",
+      role: "Unknown",
+      matchScore: 0,
+      verdict: "The AI provider failed to format the analysis properly.",
+      matchesFound: [],
+      missingOrWeak: [],
+      humanInputRequired: []
+    }
   }
 
   // Clamp score
-  parsed.matchScore = Math.max(0, Math.min(100, Math.round(parsed.matchScore)))
+  parsed.matchScore = Math.max(0, Math.min(100, Math.round(parsed.matchScore || 0)))
   return parsed
 }
 
@@ -308,30 +367,74 @@ STRICT STYLING REQUIREMENTS FOR HTML:
 - Headings MUST use 'Comfortaa' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap" rel="stylesheet">).
 - Body text MUST use 'Lato' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">).
 - Use inline styles or a <style> block.
+
+CRITICAL REQUIREMENT: You MUST respond ONLY with a single valid JSON object. Do not include markdown formatting, thought preambles, or unclosed syntax.
 `.trim()
 
-  const docGenAI = getGenAI()
-  const docModel = docGenAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: SchemaType.OBJECT,
-        properties: {
-          resumeHtml: { type: SchemaType.STRING },
-          coverLetterHtml: { type: SchemaType.STRING },
-          changes_made: { type: SchemaType.STRING },
-          reasoning: { type: SchemaType.STRING }
-        },
-        required: ["resumeHtml", "coverLetterHtml", "changes_made", "reasoning"]
-      } as any
-    }
-  })
+  const openai = getOpenAI()
 
-  console.log(`[generateBespokeDocs] Calling Gemini model: ${process.env.GEMINI_MODEL || "gemini-flash-lite-latest"}`)
-  const docResult = await docModel.generateContent(docGenPrompt)
-  const docs = JSON.parse(docResult.response.text().trim())
-  console.log(`[generateBespokeDocs] ✅ Gemini responded. Rendering PDFs...`)
+  console.log(`[generateBespokeDocs] Calling NVIDIA DeepSeek model...`)
+  let docCompletion;
+  try {
+    docCompletion = await openai.chat.completions.create({
+      model: "deepseek-ai/deepseek-v4-flash",
+      messages: [{ role: "user", content: docGenPrompt }],
+      max_tokens: 16384,
+      // @ts-ignore
+      chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
+      response_format: { type: "json_object" }
+    })
+  } catch (err: any) {
+    if (err.status === 529 || err.status === 429) {
+      console.warn(`[generateBespokeDocs] Upstream AI provider overloaded (${err.status}). Throwing AI_PROVIDER_OVERLOADED.`);
+      throw new Error("AI_PROVIDER_OVERLOADED");
+    }
+    throw err;
+  }
+
+  const docMsg = docCompletion.choices[0]?.message as any
+  if (docMsg?.reasoning_content) {
+    console.log(`[generateBespokeDocs] DeepSeek Reasoning: ${docMsg.reasoning_content.slice(0, 150).replace(/\\n/g, ' ')}...`)
+  }
+
+  let rawDocText = (docMsg?.content || "{}").trim()
+  
+  // 1. Remove markdown code blocks if present
+  rawDocText = rawDocText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+
+  // 2. Strip accidental outer quotes if wrapped like "{ ... }"
+  if (rawDocText.startsWith('"') && rawDocText.endsWith('"')) {
+    rawDocText = rawDocText.slice(1, -1).trim();
+    rawDocText = rawDocText.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+  }
+
+  // 3. Extract strictly between the first '{' and last '}'
+  const firstBrace = rawDocText.indexOf('{');
+  const lastBrace = rawDocText.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    rawDocText = rawDocText.substring(firstBrace, lastBrace + 1);
+  }
+
+  // 4. Safely parse with double-encoding protection
+  let docs;
+  try {
+    let parsedData = JSON.parse(rawDocText);
+    if (typeof parsedData === 'string') {
+      parsedData = JSON.parse(parsedData);
+    }
+    docs = parsedData;
+  } catch (e) {
+    console.error(`[generateBespokeDocs] ❌ DeepSeek parse error:`, rawDocText)
+    docs = {
+      resumeHtml: "<html><body style='font-family:Lato; padding:40px'><h1>Resume</h1><p>AI formatting error. No resume generated.</p></body></html>",
+      coverLetterHtml: "<html><body style='font-family:Lato; padding:40px'><h1>Cover Letter</h1><p>AI formatting error. No cover letter generated.</p></body></html>",
+      changes_made: "Fallback mode activated due to AI parse error.",
+      reasoning: "DeepSeek failed to format response correctly."
+    }
+  }
+
+  console.log(`[generateBespokeDocs] ✅ NVIDIA responded. Rendering PDFs...`)
 
   // Render HTML to PDFs using Playwright
   const browser = await chromium.launch({ headless: true })
@@ -555,50 +658,9 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
     let unEvaluatedJobs = (candidateGlobalJobs || []).filter(job => !trackedUrls.has(job.apply_url))
     console.log(`[huntJobs] Data Lake returned ${unEvaluatedJobs.length} un-evaluated jobs.`)
 
-    // Step 3: Trigger External APIs (If < 5 jobs found)
-    if (unEvaluatedJobs.length < 5) {
-      console.log(`[huntJobs] Insufficient jobs in Data Lake. Triggering API Fallback Engine...`)
-      
-      let jobs = await fetchFromJSearch(searchRole, location)
-      console.log(`[huntJobs] Fetched ${jobs.length} jobs from JSearch.`)
-
-      if (jobs.length === 0) {
-        console.log(`[huntJobs] JSearch failed or returned 0. Falling back to Indeed...`)
-        jobs = await fetchFromIndeed(searchRole, location)
-        console.log(`[huntJobs] Fetched ${jobs.length} jobs from Indeed.`)
-      }
-
-      if (jobs.length === 0) {
-        console.log(`[huntJobs] Indeed failed or returned 0. Falling back to Reed...`)
-        jobs = await fetchFromReed(searchRole, location)
-        console.log(`[huntJobs] Fetched ${jobs.length} jobs from Reed.`)
-      }
-
-      if (jobs.length === 0) {
-        console.log(`[huntJobs] Reed failed or returned 0. Falling back to TheirStack...`)
-        jobs = await fetchFromTheirstack(searchRole, location)
-        console.log(`[huntJobs] Fetched ${jobs.length} jobs from TheirStack.`)
-      }
-
-      if (jobs.length > 0) {
-        // Bulk upsert new jobs into global_jobs
-        const { data, error } = await scopedSupabase
-          .from('global_jobs')
-          .upsert(jobs, { onConflict: 'apply_url', ignoreDuplicates: true })
-          .select()
-
-        if (error) {
-          console.error(`[huntJobs] Bulk insert error:`, error.message)
-        } else {
-          console.log(`[huntJobs] Successfully inserted ${data?.length || 0} new jobs into global_jobs.`)
-        }
-
-        // Filter new API results against the Exclusion List
-        const newUnEvaluated = jobs.filter(job => !trackedUrls.has(job.apply_url))
-        
-        // Combine with Data Lake jobs
-        unEvaluatedJobs = [...unEvaluatedJobs, ...newUnEvaluated]
-      }
+    // Data Lake is the sole source of truth (populated by background harvester)
+    if (unEvaluatedJobs.length === 0) {
+      console.log(`[huntJobs] No matching jobs found in the Data Lake for this search.`)
     }
 
     // Step 4: Take the top 5 jobs
@@ -658,5 +720,52 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
     const message = err instanceof Error ? err.message : String(err)
     console.error("[huntJobs] Execution failed:", message)
     res.status(500).json({ error: "Internal Server Error", message })
+  }
+}
+
+// ── Seed Harvester (One-Shot Data Lake Population) ──────────────────
+
+export async function seedHarvester(req: Request, res: Response): Promise<void> {
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 500
+  console.log(`\n===========================================`)
+  console.log(`[seedHarvester] Manual seed triggered. Harvesting ${limit} jobs from Apify...`)
+  console.log(`===========================================`)
+
+  try {
+    const jobs = await harvestAllSources(limit)
+    console.log(`[seedHarvester] Harvested ${jobs.length} jobs. Upserting into global_jobs...`)
+
+    if (jobs.length === 0) {
+      res.json({ success: true, message: 'Harvest returned 0 jobs. Check Apify token and actor availability.', inserted: 0 })
+      return
+    }
+
+    // Upsert with ON CONFLICT (apply_url) DO NOTHING
+    const { data, error } = await supabase
+      .from('global_jobs')
+      .upsert(jobs, { onConflict: 'apply_url', ignoreDuplicates: true })
+      .select()
+
+    if (error) {
+      console.error(`[seedHarvester] ❌ Upsert error:`, error.message)
+      res.status(500).json({ error: 'Upsert Failed', message: error.message })
+      return
+    }
+
+    console.log(`[seedHarvester] ✅ Seeded ${data?.length || 0} new jobs into global_jobs.`)
+    res.json({
+      success: true,
+      harvested: jobs.length,
+      inserted: data?.length || 0,
+      sources: {
+        greenhouse: jobs.filter(j => j.api_source === 'greenhouse').length,
+        lever: jobs.filter(j => j.api_source === 'lever').length,
+        ashby: jobs.filter(j => j.api_source === 'ashby').length,
+      }
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[seedHarvester] ❌ Unhandled error:`, message)
+    res.status(500).json({ error: 'Internal Server Error', message })
   }
 }

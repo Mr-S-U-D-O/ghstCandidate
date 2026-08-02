@@ -6,11 +6,29 @@ import { supabase } from '../supabaseClient'
 export interface CandidateProfile {
   name: string
   email: string
+  first_name?: string
+  last_name?: string
+  phone?: string
+  linkedin_url?: string
+  github_url?: string
+  portfolio_url?: string
   targetRoles: string[]
   locations: string[]
   skills: string[]
   rawResumeText: string
   rawCoverLetterText: string
+  auth_to_work?: boolean
+  needs_sponsorship?: boolean
+  felony_conviction?: boolean
+  education_level?: string
+  highest_degree_major?: string
+  years_of_experience?: number
+  salary_expectation?: string
+  notice_period?: string
+  relocation?: boolean
+  work_environment?: string
+  willing_to_travel?: string
+  willing_to_relocate?: boolean
   [key: string]: any
 }
 
@@ -72,11 +90,29 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setCandidateProfile({
         name: rest.name || '',
         email: rest.email || '',
+        first_name: rest.first_name || '',
+        last_name: rest.last_name || '',
+        phone: rest.phone || '',
+        linkedin_url: rest.linkedin_url || '',
+        github_url: rest.github_url || '',
+        portfolio_url: rest.portfolio_url || '',
         targetRoles: rest.target_roles || [],
         locations: rest.locations || [],
         skills: rest.skills || [],
         rawResumeText: rest.raw_resume_text || '',
         rawCoverLetterText: rest.raw_cover_letter_text || '',
+        auth_to_work: rest.auth_to_work,
+        needs_sponsorship: rest.needs_sponsorship,
+        felony_conviction: rest.felony_conviction,
+        education_level: rest.education_level || '',
+        highest_degree_major: rest.highest_degree_major || '',
+        years_of_experience: rest.years_of_experience,
+        salary_expectation: rest.salary_expectation || '',
+        notice_period: rest.notice_period || '',
+        relocation: rest.relocation,
+        work_environment: rest.work_environment || '',
+        willing_to_travel: rest.willing_to_travel || '',
+        willing_to_relocate: rest.willing_to_relocate,
         ...(extra_data || {})
       })
       setHasProfile(true)
@@ -91,7 +127,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const current = { ...candidateProfile, ...(overrides || {}) }
 
     // Separate known fields from dynamic extra_data
-    const { name, email, targetRoles, locations, skills, rawResumeText, rawCoverLetterText, ...extra_data } = current
+    const { 
+      name, email, first_name, last_name, phone, linkedin_url, github_url, portfolio_url,
+      targetRoles, locations, skills, rawResumeText, rawCoverLetterText,
+      auth_to_work, needs_sponsorship, felony_conviction, education_level, highest_degree_major,
+      years_of_experience, salary_expectation, notice_period, relocation, work_environment,
+      willing_to_travel, willing_to_relocate,
+      ...extra_data 
+    } = current
 
     const { error } = await supabase
       .from('profiles')
@@ -99,11 +142,29 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         id: user.id,
         name,
         email,
+        first_name,
+        last_name,
+        phone,
+        linkedin_url,
+        github_url,
+        portfolio_url,
         target_roles: targetRoles,
         locations,
         skills,
         raw_resume_text: rawResumeText,
         raw_cover_letter_text: rawCoverLetterText,
+        auth_to_work,
+        needs_sponsorship,
+        felony_conviction,
+        education_level,
+        highest_degree_major,
+        years_of_experience,
+        salary_expectation,
+        notice_period,
+        relocation,
+        work_environment,
+        willing_to_travel,
+        willing_to_relocate,
         extra_data
       }, { onConflict: 'id' })
 

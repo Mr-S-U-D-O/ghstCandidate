@@ -97,5 +97,14 @@ a {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-white);
+}
+
+/* Override WebKit Autofill styling to maintain the achromatic design */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 50px white inset !important;
+    -webkit-text-fill-color: black !important;
+    transition: background-color 5000s ease-in-out 0s;
 }

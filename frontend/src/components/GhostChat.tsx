@@ -189,7 +189,7 @@ export default function GhostChat() {
             onKeyDown={handleKeyDown}
             placeholder="Type your answer..."
             disabled={isTyping}
-            className="w-full bg-gray-50 border border-gray-200 text-black font-sans text-base md:text-sm rounded-full pl-6 pr-14 py-4 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
+            className="w-full bg-transparent border-b border-black text-black font-sans text-base md:text-sm pl-2 pr-14 py-4 focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors disabled:opacity-50 placeholder-gray-400"
           />
           <button 
             onClick={() => sendMessage(inputValue)}

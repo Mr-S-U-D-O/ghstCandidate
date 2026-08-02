@@ -7,151 +7,141 @@ export interface NormalizedJob {
   description: string;
   apply_url: string;
   api_source: string;
+  ats_id?: string;
 }
 
-export async function fetchFromJSearch(searchRole: string, location: string): Promise<NormalizedJob[]> {
-  const query = `${searchRole} in ${location}`;
-  console.log(`[jobAdapter] 📡 Calling JSearch API for: "${query}"`);
-  
-  try {
-    const response = await axios.get('https://jsearch.p.rapidapi.com/search', {
-      headers: {
-        'x-rapidapi-key': process.env.JSEARCH_RAPIDAPI_KEY,
-        'x-rapidapi-host': 'jsearch.p.rapidapi.com'
-      },
-      params: {
-        query: query,
-        page: '1',
-        num_pages: '1'
-      }
-    });
+// ── Apify Actor IDs ─────────────────────────────────────────────────
+const APIFY_ACTORS = {
+  greenhouse: 'fantastic-jobs~greenhouse-jobs-api',
+  lever: 'fantastic-jobs~lever-co-jobs-api',
+  ashby: 'fantastic-jobs~ashby-jobs-api',
+} as const;
 
-    const data = response.data?.data;
-    console.log(`[jobAdapter] ✅ JSearch returned HTTP ${response.status}. Payload data length: ${data ? data.length : 0}`);
-    if (!data || !Array.isArray(data)) {
-      console.warn(`[jobAdapter] ⚠️ JSearch returned empty or invalid data array. Proceeding to fallback.`);
-      return [];
-    }
+// Default search terms to ensure the scrapers return tech roles during harvesting
+const DEFAULT_SEARCH_TERMS = ['Web Developer', 'Frontend', 'Backend', 'Fullstack', 'Software Engineer', 'Engineer'];
 
-    return data.map((job: any) => ({
-      title: job.job_title || 'Unknown Title',
-      company: job.employer_name || 'Unknown Company',
-      location: job.job_city ? (job.job_country ? `${job.job_city}, ${job.job_country}` : job.job_city) : (job.job_country || 'Remote/Unknown'),
-      description: job.job_description || '',
-      apply_url: job.job_apply_link || job.job_google_link || '',
-      api_source: 'jsearch'
-    })).filter((job: NormalizedJob) => job.apply_url);
-  } catch (error: any) {
-    console.error(`[jobAdapter] ❌ Error fetching from JSearch. Status: ${error.response?.status || 'N/A'}. Reason: ${error.message}`);
+// ── Apify Runner ────────────────────────────────────────────────────
+// Calls the Apify actor synchronously and returns the raw dataset items.
+
+async function runApifyActor(actorId: string, input: Record<string, unknown>, limit: number): Promise<any[]> {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) {
+    console.error(`[jobAdapter] ❌ APIFY_TOKEN is not set. Cannot call ${actorId}.`);
     return [];
   }
-}
 
-export async function fetchFromReed(searchRole: string, location: string): Promise<NormalizedJob[]> {
-  console.log(`[jobAdapter] 📡 Calling Reed API for: "${searchRole}" in "${location}"`);
+  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}`;
+  console.log(`[jobAdapter] 📡 Calling Apify actor: ${actorId} (limit: ${limit})`);
+
   try {
-    const response = await axios.get('https://www.reed.co.uk/api/1.0/search', {
-      params: {
-        keywords: searchRole,
-        locationName: location
-      },
-      auth: {
-        username: process.env.REED_API_KEY as string,
-        password: ''
-      }
-    });
-
-    const data = response.data?.results;
-    console.log(`[jobAdapter] ✅ Reed returned HTTP ${response.status}. Results count: ${data ? data.length : 0}`);
-    if (!data || !Array.isArray(data)) {
-      console.warn(`[jobAdapter] ⚠️ Reed returned empty or invalid results array. Proceeding to fallback.`);
-      return [];
-    }
-
-    return data.map((job: any) => ({
-      title: job.jobTitle || 'Unknown Title',
-      company: job.employerName || 'Unknown Company',
-      location: job.locationName || 'Remote/Unknown',
-      description: job.jobDescription || '',
-      apply_url: job.jobUrl || '',
-      api_source: 'reed'
-    })).filter((job: NormalizedJob) => job.apply_url);
-  } catch (error: any) {
-    console.error(`[jobAdapter] ❌ Error fetching from Reed. Status: ${error.response?.status || 'N/A'}. Reason: ${error.message}`);
-    return [];
-  }
-}
-
-export async function fetchFromTheirstack(searchRole: string, location: string): Promise<NormalizedJob[]> {
-  console.log(`[jobAdapter] 📡 Calling TheirStack API for: "${searchRole}" (location limit ignored)`);
-  try {
-    const response = await axios.post('https://api.theirstack.com/v1/jobs/search', {
-      job_title_or: [searchRole],
-      posted_at_max_age_days: 30,
-      limit: 10
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.THEIRSTACK_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const data = response.data?.data;
-    console.log(`[jobAdapter] ✅ TheirStack returned HTTP ${response.status}. Data count: ${data ? data.length : 0}`);
-    if (!data || !Array.isArray(data)) {
-      console.warn(`[jobAdapter] ⚠️ TheirStack returned empty or invalid data array. Proceeding to fallback.`);
-      return [];
-    }
-
-    return data.map((job: any) => ({
-      title: job.job_title || job.title || 'Unknown Title',
-      company: job.company_name || job.company || 'Unknown Company',
-      location: job.location || 'Remote/Unknown',
-      description: job.description || '',
-      apply_url: job.url || job.apply_url || '',
-      api_source: 'theirstack'
-    })).filter((job: NormalizedJob) => job.apply_url);
-  } catch (error: any) {
-    console.error(`[jobAdapter] ❌ Error fetching from TheirStack. Status: ${error.response?.status || 'N/A'}. Reason: ${error.message}`);
-    return [];
-  }
-}
-
-export async function fetchFromIndeed(searchRole: string, location: string): Promise<NormalizedJob[]> {
-  console.log(`[jobAdapter] 📡 Calling Indeed API for: "${searchRole}" in "${location}"`);
-  try {
-    const response = await axios.post('https://indeed-scraper-api.p.rapidapi.com/api/job', {
-      scraper: {
-        query: searchRole,
-        location: location,
-        maxRows: 10,
-        country: location.toLowerCase().includes('south africa') ? 'za' : 'us'
-      }
-    }, {
-      headers: {
-        'x-rapidapi-key': process.env.INDEED_RAPIDAPI_KEY,
-        'x-rapidapi-host': process.env.INDEED_RAPIDAPI_HOST,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(url, { ...input, maxItems: limit }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 120_000, // 2 minute timeout for sync runs
     });
 
     const data = response.data;
-    console.log(`[jobAdapter] ✅ Indeed returned HTTP ${response.status}. Data length: ${Array.isArray(data) ? data.length : 0}`);
-    if (!data || !Array.isArray(data)) {
-      console.warn(`[jobAdapter] ⚠️ Indeed returned empty or invalid data array. Proceeding to fallback.`);
+    if (!Array.isArray(data)) {
+      console.warn(`[jobAdapter] ⚠️ ${actorId} returned non-array response. Type: ${typeof data}`);
       return [];
     }
 
-    return data.map((job: any) => ({
-      title: job.title || 'Unknown Title',
-      company: job.companyName || 'Unknown Company',
-      location: job.location?.formattedAddressShort || location,
-      description: job.descriptionText || '',
-      apply_url: job.applyUrl || job.jobUrl || '',
-      api_source: 'indeed'
-    })).filter((job: NormalizedJob) => job.apply_url);
+    console.log(`[jobAdapter] ✅ ${actorId} returned ${data.length} items.`);
+    return data;
   } catch (error: any) {
-    console.error(`[jobAdapter] ❌ Error fetching from Indeed. Status: ${error.response?.status || 'N/A'}. Reason: ${error.message}`);
+    console.error(`[jobAdapter] ❌ Error calling ${actorId}. Status: ${error.response?.status || 'N/A'}. Reason: ${error.message}`);
     return [];
   }
+}
+
+// ── Greenhouse Fetcher ──────────────────────────────────────────────
+
+export async function fetchFromGreenhouse(limit: number): Promise<NormalizedJob[]> {
+  const raw = await runApifyActor(APIFY_ACTORS.greenhouse, { searchTerms: DEFAULT_SEARCH_TERMS }, limit);
+
+  return raw.map((job: any) => ({
+    title: job.title || 'Unknown Title',
+    company: job.organization || job.company || job.companySlug || 'Unknown Company',
+    location: job.locations_derived?.[0] || job.location_type || job.location?.name || 'Remote/Unknown',
+    description: job.description_text || job.description_html || job.contentText || '',
+    apply_url: job.url || job.absoluteUrl || job.applyUrl || '',
+    api_source: 'greenhouse',
+    ats_id: job.id ? String(job.id) : undefined,
+  })).filter((job: NormalizedJob) => job.apply_url && job.description);
+}
+
+// ── Lever Fetcher ───────────────────────────────────────────────────
+
+export async function fetchFromLever(limit: number): Promise<NormalizedJob[]> {
+  const raw = await runApifyActor(APIFY_ACTORS.lever, { searchTerms: DEFAULT_SEARCH_TERMS }, limit);
+
+  return raw.map((job: any) => ({
+    title: job.title || job.text || 'Unknown Title',
+    company: job.organization || job.company || job.companySlug || 'Unknown Company',
+    location: job.locations_derived?.[0] || job.location_type || job.categories?.location || job.location || 'Remote/Unknown',
+    description: job.description_text || job.description_html || job.descriptionPlain || '',
+    apply_url: job.url || job.hostedUrl || job.applyUrl || '',
+    api_source: 'lever',
+    ats_id: job.id ? String(job.id) : undefined,
+  })).filter((job: NormalizedJob) => job.apply_url && job.description);
+}
+
+// ── Ashby Fetcher ───────────────────────────────────────────────────
+
+export async function fetchFromAshby(limit: number): Promise<NormalizedJob[]> {
+  const raw = await runApifyActor(APIFY_ACTORS.ashby, { searchTerms: DEFAULT_SEARCH_TERMS }, limit);
+
+  return raw.map((job: any) => ({
+    title: job.title || 'Unknown Title',
+    company: job.organization || job.company || job.organizationName || 'Unknown Company',
+    location: job.locations_derived?.[0] || job.location_type || job.location || 'Remote/Unknown',
+    description: job.description_text || job.description_html || job.description || '',
+    apply_url: job.url || job.applyUrl || '',
+    api_source: 'ashby',
+    ats_id: job.id ? String(job.id) : undefined,
+  })).filter((job: NormalizedJob) => job.apply_url && job.description);
+}
+
+// ── Composite Harvester ─────────────────────────────────────────────
+// Splits the total limit across all 3 sources, runs in parallel,
+// merges, and deduplicates by apply_url.
+
+export async function harvestAllSources(totalLimit: number): Promise<NormalizedJob[]> {
+  const perSource = Math.ceil(totalLimit / 3);
+
+  // Apify actors have a hardcoded minimum of ~200 items per run regardless of maxItems.
+  // Log a warning so we know we're going to receive more than requested.
+  if (totalLimit < 600) {
+    console.warn(`[jobAdapter] ⚠️ Requested ${totalLimit} jobs but Apify minimum is ~200/actor (600 total). All returned jobs will be kept — we never discard what we pay for.`);
+  }
+
+  console.log(`[jobAdapter] 🌾 Starting harvest: ${totalLimit} requested (${perSource} per source)...`);
+
+  const results = await Promise.allSettled([
+    fetchFromGreenhouse(perSource),
+    fetchFromLever(perSource),
+    fetchFromAshby(perSource),
+  ]);
+
+  const allJobs: NormalizedJob[] = [];
+  const sourceNames = ['Greenhouse', 'Lever', 'Ashby'];
+
+  results.forEach((result, i) => {
+    if (result.status === 'fulfilled') {
+      console.log(`[jobAdapter] ✅ ${sourceNames[i]}: ${result.value.length} jobs harvested.`);
+      allJobs.push(...result.value);
+    } else {
+      console.error(`[jobAdapter] ❌ ${sourceNames[i]} failed:`, result.reason);
+    }
+  });
+
+  // Deduplicate by apply_url
+  const seen = new Set<string>();
+  const unique = allJobs.filter(job => {
+    if (seen.has(job.apply_url)) return false;
+    seen.add(job.apply_url);
+    return true;
+  });
+
+  console.log(`[jobAdapter] 🌾 Harvest complete: ${allJobs.length} total → ${unique.length} unique jobs.`);
+  return unique; // NEVER slice. We keep everything we pay for.
 }

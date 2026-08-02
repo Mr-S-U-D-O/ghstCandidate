@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import LandingPage from './components/LandingPage'
 import AuthPage from './components/AuthPage'
+import WaitlistPage from './components/WaitlistPage'
 import OnboardingFlow from './components/OnboardingFlow'
 import Dashboard from './components/Dashboard'
 import { UserProvider, useUser } from './context/UserContext'
@@ -45,7 +46,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/waitlist" element={<WaitlistPage />} />
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="/onboarding" element={
         <AuthGuard blockIfProfile>
           <OnboardingFlow />
@@ -54,6 +57,11 @@ function AppRoutes() {
       <Route path="/dashboard" element={
         <AuthGuard requireProfile>
           <Dashboard />
+        </AuthGuard>
+      } />
+      <Route path="/settings" element={
+        <AuthGuard requireProfile>
+          <OnboardingFlow />
         </AuthGuard>
       } />
     </Routes>

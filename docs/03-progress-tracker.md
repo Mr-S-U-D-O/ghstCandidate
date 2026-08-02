@@ -262,6 +262,85 @@
   - [x] Register `POST /api/run-agent` in `server.ts`
   - [x] Update `MatchReportPanel.tsx` with Bottleneck UI and "Submit & Resume" flow
 
+- [x] **Phase 23.1: Fix Stagehand Triage Syntax Bug** *(Complete)*
+  - [x] Use `page.evaluate()` for Login Wall detection in `agentController.ts`
+
+- [x] **Phase 23.2: Fix JIT File Upload Detection** *(Complete)*
+  - [x] Replace AI extract with deterministic `page.evaluate()` for file upload check in `agentController.ts`
+
+- [x] **Phase 23.3: Multi-Step Loop & act() Syntax Fix** *(Complete)*
+  - [x] Wrap `agentController.ts` logic in a multi-step while loop
+  - [x] Fix `stagehand.act()` instruction syntax
+
+- [x] **Phase 23.4: Configure Stagehand for Google Gemini** *(Complete)*
+  - [x] Update Stagehand model configuration in agentController.ts
+
+- [x] **Phase 23.5: Fix DB Schema Typo & Enhance Agent Logic** *(Complete)*
+  - [x] Update status to column in agentController.ts
+  - [x] Enhance Stagehand act instruction prompt
+
+- [x] **Phase 23.6: Null-Safe DOM Evaluations & Navigation Resilience** *(Complete)*
+  - [x] Add null-checks and error catches to page.evaluate() blocks in agentController.ts
+
+- [x] **Phase 24.0: Pivot to ATS Career Site APIs (Architecture)** *(Complete)*
+  - [x] Architectural proposal: Apify Greenhouse/Lever/Ashby via background harvester
+  - [x] Three-layer deduplication strategy (URL, ATS ID, user-level)
+  - [x] Data Lake → zero-cost user serving model
+
+- [x] **Phase 24.1: Execute ATS Harvester, Seed Data & UI Refinements** *(Complete)*
+  - [x] Rewrite `jobAdapter.ts` — 3 Apify fetchers + `harvestAllSources()`
+  - [x] Update `cron.ts` — Harvester (Wed/Sat 3AM) + Sweeper (Daily 4AM)
+  - [x] Update `jobController.ts` — Remove API fallback cascade
+  - [x] Add `seedHarvester` endpoint (`POST /api/seed-harvester`)
+  - [x] Register seed route in `server.ts`
+  - [x] Update `.env` — Add `APIFY_TOKEN`, remove dead API keys
+  - [x] Update `supabase-schema.sql` — Add `ats_id`, composite index, delete policy
+  - [x] Convert Hunter role input to tech roles dropdown in `Dashboard.tsx`
+  - [x] Verify "Paste Link" flow bypasses Data Lake (unchanged)
+
+- [x] **Phase 24.2: Fix Apify Actor URL Format & Input Parameters** *(Complete)*
+  - [x] Fix URL slash mismatch in `APIFY_ACTORS` (use `~` instead of `/`)
+  - [x] Add `DEFAULT_SEARCH_TERMS` to fetchers so they don't return 0 items
+
+- [x] **Phase 24.3: Agent Dynamic Brain & Data Lake Fixes** *(Complete)*
+  - [x] Fix Apify output schema keys in all 3 fetchers (`organization`, `description_text`, `locations_derived`)
+  - [x] Tighten filter to reject blank-description jobs (both `apply_url && description` required)
+  - [x] Add `?limit=` query param to `seedHarvester` endpoint (defaults to 500)
+  - [x] Write `fetchCandidateProfile(userId)` helper in `agentController.ts`
+  - [x] Call helper alongside `fetchCandidateMemories` inside `runAgent`
+  - [x] Inject stringified `dbProfile` into Stagehand `instruction` prompt
+
+- [x] **Phase 24.5: Prevent Data Truncation (Emergency Fix)** *(Complete)*
+  - [x] Remove `.slice(0, totalLimit)` from `harvestAllSources` — keep everything we pay for
+  - [x] Add budget warning log when requested limit is below Apify's 600-job minimum
+
+- [x] **Phase 24.7: Agent Loop Fixes & Profiler Schema Expansion** *(Complete)*
+  - [x] Implement `hasGeneratedDocs` lock to stop infinite JIT loops
+  - [x] Fix upload syntax to use Playwright locators (`page.locator('input[type="file"]').first().setInputFiles`)
+  - [x] Increase `MAX_STEPS` from 5 to 50
+  - [x] Expand `profiles` table schema with ATS screening fields in `docs/supabase-schema.sql`
+
+- [x] **Phase 25.0: User Management UI (Gemini-Style Pop-up)** *(Complete)*
+  - [x] Add clean Settings SVG trigger to the bottom user block
+  - [x] Implement absolutely-positioned pop-up menu with click-outside listener
+  - [x] Build minimalist, achromatic menu UI with typography mapping (Comfortaa / Lato)
+  - [x] Add "Account Settings", "Manage Subscription", "Sign Out", and "Delete Account" items
+
+- [x] **Phase 25.1: Wire Up Sign Out & GitHub-Style Secure Account Deletion** *(Complete)*
+  - [x] Wire "Sign Out" to call `supabase.auth.signOut()` and redirect to `/login`
+  - [x] Create `DeleteAccountModal.tsx` — 3-step state machine modal (Intent → Warning → Confirmation)
+  - [x] Disabled final "Delete" button until exact name match is typed
+  - [x] Create `backend/src/controllers/userController.ts` — `DELETE /api/user/account` endpoint
+  - [x] Use `supabaseAdmin` (service_role) to wipe `profiles`, `jobs`, `candidate_memories`, then `auth.users`
+  - [x] Register route in `server.ts` and add `DELETE` to CORS allowed methods
+
+- [/] **Phase 25.4: Auth Lockdown, Resend MCP & Waitlist Pipeline** *(Active)*
+  - [ ] Add waitlist schema and table
+  - [ ] Configure backend Resend API integration
+  - [ ] Build waitlist page and form
+  - [ ] Restrict AuthPage to VIP list only
+  - [ ] Apply minimalist input field styling globally
+
 ---
 
 ## Notes

@@ -13,12 +13,33 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id                uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
   name              text,
   email             text,
+  first_name        text,
+  last_name         text,
+  phone             text,
+  linkedin_url      text,
+  github_url        text,
+  portfolio_url     text,
   target_roles      jsonb    DEFAULT '[]'::jsonb,
   locations         jsonb    DEFAULT '[]'::jsonb,
   skills            jsonb    DEFAULT '[]'::jsonb,
   raw_resume_text        text     DEFAULT '',
   raw_cover_letter_text  text     DEFAULT '',
-  -- Dynamic facts injected by the Ghost Profiler (salary, github, visa, etc.)
+  
+  -- ATS Screening Fields (Phase 24.7 & 25.2)
+  auth_to_work           boolean,
+  needs_sponsorship      boolean,
+  felony_conviction      boolean,
+  education_level        text,
+  highest_degree_major   text,
+  years_of_experience    integer,
+  salary_expectation     text,
+  notice_period          text,
+  relocation             boolean,
+  work_environment       text,
+  willing_to_travel      text,
+  willing_to_relocate    boolean,
+
+  -- Dynamic facts injected by the Ghost Profiler
   extra_data             jsonb    DEFAULT '{}'::jsonb,
   created_at             timestamptz DEFAULT now(),
   updated_at             timestamptz DEFAULT now()
@@ -135,6 +156,15 @@ CREATE TABLE IF NOT EXISTS public.global_jobs (
 -- RLS
 ALTER TABLE public.global_jobs ENABLE ROW LEVEL SECURITY;
 
+-- Add ATS-native ID for smarter deduplication
+ALTER TABLE public.global_jobs ADD COLUMN IF NOT EXISTS ats_id text;
+
+-- Create composite unique index for cross-ATS deduplication
+-- (same job ID from different ATS platforms won't collide)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_global_jobs_source_ats
+  ON public.global_jobs (api_source, ats_id)
+  WHERE ats_id IS NOT NULL;
+
 -- Auth users can read all global jobs
 CREATE POLICY "global_jobs: select auth" ON public.global_jobs
   FOR SELECT USING (auth.role() = 'authenticated');
@@ -143,6 +173,10 @@ CREATE POLICY "global_jobs: select auth" ON public.global_jobs
 -- We will allow authenticated users to insert, but in practice it will be the backend.
 CREATE POLICY "global_jobs: insert auth" ON public.global_jobs
   FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR auth.role() = 'service_role');
+
+-- Allow backend (service role) to delete stale jobs (used by the Sweeper cron)
+CREATE POLICY "global_jobs: delete service" ON public.global_jobs
+  FOR DELETE USING (auth.role() = 'service_role');
 
 
 -- ── 5. Candidate Memories ────────────────────────────────────────
@@ -200,3 +234,41 @@ CREATE POLICY "generated_docs: insert own" ON public.generated_docs
 
 CREATE POLICY "generated_docs: delete own" ON public.generated_docs
   FOR DELETE USING (auth.uid() = user_id);
+
+-- ── 7. Waitlist ──────────────────────────────────────────────────
+-- Stores users who have joined the waitlist for the closed beta.
+
+CREATE TABLE IF NOT EXISTS public.waitlist (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name              text,
+  surname           text,
+  email             text NOT NULL,
+  phone             text,
+  inform_on_launch  boolean NOT NULL DEFAULT false,
+  keep_posted       boolean DEFAULT false,
+  created_at        timestamptz DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
+
+-- Allow service role to do everything (implicit bypass)
+-- Allow anon/authenticated to insert via API (if we want direct insert). 
+-- Wait, the backend will insert it using service role, so we don't strictly need insert policy for anon.
+CREATE TABLE IF NOT EXISTS public.waitlist (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    surname TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    phone TEXT,
+    inform_on_launch BOOLEAN DEFAULT TRUE,
+    keep_posted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security
+ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
+
+-- Allow public anonymous inserts
+CREATE POLICY "Allow anonymous inserts" ON public.waitlist
+    FOR INSERT WITH CHECK (true);
