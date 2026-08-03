@@ -324,6 +324,25 @@ ${memoriesText}
         );
       }
 
+      // 2.5 Defensive DOM Pruning (Anti-SSO Protocol)
+      console.log("[runAgent] Pruning decoy SSO buttons from DOM...");
+      await page.evaluate(() => {
+        const forbiddenTexts = [
+          'apply with linkedin',
+          'apply with indeed',
+          'quick apply',
+          'sign in to apply'
+        ];
+        
+        const elements = document.querySelectorAll('button, a, input[type="button"], input[type="submit"]');
+        elements.forEach(el => {
+          const text = (el.textContent || (el as HTMLInputElement).value || '').toLowerCase().trim();
+          if (forbiddenTexts.some(forbidden => text.includes(forbidden))) {
+            el.remove();
+          }
+        });
+      }).catch((e: unknown) => console.warn("[runAgent] DOM pruning non-fatal error:", e));
+
       // 3. Stagehand Action
       console.log("[runAgent] Executing Stagehand act()...");
       const instruction = `

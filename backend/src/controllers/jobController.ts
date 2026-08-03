@@ -691,36 +691,26 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
 
     // Step 4: Take the top 5 jobs
     unEvaluatedJobs = unEvaluatedJobs.slice(0, 5)
-    console.log(`[huntJobs] Proceeding to Gemini Evaluation with ${unEvaluatedJobs.length} jobs.`)
+    console.log(`[huntJobs] Proceeding to queue ${unEvaluatedJobs.length} jobs to user board (State A).`)
 
-    // Fetch candidate memories once to inject into all scoring calls
-    let huntMemories: { memory_key: string; memory_value: string }[] = []
-    const { data: memData } = await scopedSupabase
-      .from('candidate_memories')
-      .select('memory_key, memory_value')
-      .eq('user_id', userId)
-    huntMemories = memData || []
-    console.log(`[huntJobs] Injecting ${huntMemories.length} candidate memories into scoring prompts.`)
-
-    // Step 5: Evaluate with Gemini & Insert into Kanban
+    // Step 5: Insert into Kanban (State A: Unanalyzed)
     const evaluatedJobs = []
     for (const job of unEvaluatedJobs) {
-      console.log(`[huntJobs] Evaluating: ${job.title} at ${job.company}`)
+      console.log(`[huntJobs] Queuing: ${job.title} at ${job.company}`)
       try {
-        const parsed = await analyzeJobText(job.description, candidateProfile, job.apply_url, huntMemories)
-        
         const kanbanJob = {
           user_id: userId,
-          company: parsed.company || job.company,
-          title: parsed.role || job.title,
+          company: 'Unknown Company',
+          title: job.title,
           location: job.location,
           source_url: job.apply_url,
-          match_score: parsed.matchScore,
-          verdict: parsed.verdict,
-          matches_found: parsed.matchesFound,
-          missing_or_weak: parsed.missingOrWeak,
-          human_input_required: parsed.humanInputRequired,
-          column: 'discovered'
+          match_score: 0,
+          verdict: null,
+          matches_found: null,
+          missing_or_weak: null,
+          human_input_required: null,
+          column: 'discovered',
+          needs_input: false
         }
 
         const { data: insertedJob, error: insertError } = await scopedSupabase
@@ -732,11 +722,11 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
         if (insertError) {
           console.error(`❌ [huntJobs] Failed to insert job into Kanban:`, insertError)
         } else if (insertedJob) {
-          console.log(`✅ [huntJobs] Inserted evaluated job into Kanban: ${insertedJob.title} at ${insertedJob.company}`)
+          console.log(`✅ [huntJobs] Queued job into Kanban: ${insertedJob.title} at ${insertedJob.company}`)
           evaluatedJobs.push(insertedJob)
         }
       } catch (e) {
-        console.error(`❌ [huntJobs] Failed to evaluate job ${job.apply_url}:`, e)
+        console.error(`❌ [huntJobs] Failed to queue job ${job.apply_url}:`, e)
       }
     }
 

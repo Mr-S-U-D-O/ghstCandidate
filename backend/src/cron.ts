@@ -1,31 +1,41 @@
 import cron from "node-cron"
 import { supabase } from "./supabaseClient.js"
-import { harvestAllSources } from "./utils/jobAdapter.js"
+import { ingestFeeds } from "./utils/cron/harvester.js"
 
 export function initCron() {
   console.log("[Cron] Initializing Background Systems...")
 
   // ── The Harvester ───────────────────────────────────────────────
   // Runs twice per week (Wednesday 3AM + Saturday 3AM UTC).
-  // Fetches 500 jobs total from Greenhouse, Lever, and Ashby via Apify
-  // and upserts them into the global_jobs Data Lake.
+  // Fetches unauthenticated JSON APIs and RSS feeds and upserts
+  // directly into the user's jobs Kanban board (State A).
 
   cron.schedule("0 3 * * 3,6", async () => {
     console.log("[Cron/Harvester] 🌾 Starting bi-weekly harvest cycle...")
 
     try {
-      const jobs = await harvestAllSources(500)
-      console.log(`[Cron/Harvester] Harvested ${jobs.length} jobs. Upserting into global_jobs...`)
+      const jobs = await ingestFeeds()
+      console.log(`[Cron/Harvester] Ingested ${jobs.length} jobs. Upserting into global_jobs...`)
 
       if (jobs.length === 0) {
         console.log("[Cron/Harvester] No jobs returned. Exiting cycle.")
         return
       }
 
+      // We need to map `IngestedJob` to `global_jobs` schema
+      const mappedGlobalJobs = jobs.map(j => ({
+        title: j.title,
+        company: j.company,
+        location: j.location,
+        description: j.description_html,
+        apply_url: j.apply_url,
+        api_source: j.source
+      }))
+
       // Upsert with ON CONFLICT (apply_url) DO NOTHING to prevent duplicates
       const { data, error } = await supabase
         .from('global_jobs')
-        .upsert(jobs, { onConflict: 'apply_url', ignoreDuplicates: true })
+        .upsert(mappedGlobalJobs, { onConflict: 'apply_url', ignoreDuplicates: true })
         .select()
 
       if (error) {
