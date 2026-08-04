@@ -23,7 +23,7 @@
     "express": "^5.2.1",
     "node-cron": "^4.6.0",
     "openai": "^7.3.0",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse": "^1.1.1",
     "resend": "^6.18.1",
     "rss-parser": "^3.13.0",
     "zod": "^4.4.3"

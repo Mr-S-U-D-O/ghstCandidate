@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import OpenAI from "openai"
-import { PDFParse } from "pdf-parse"
+import pdfParse from "pdf-parse"
 
 let _openai: OpenAI | null = null
 function getOpenAI() {
@@ -25,24 +25,23 @@ export async function parseCv(req: Request, res: Response): Promise<void> {
 
     console.log(`[parseCv] Parsing uploaded document (mode: ${mode || 'cv'})...`)
 
-    // Extract raw text from the PDF buffer instead of sending the base64 string to the LLM
+    // Extract raw text from the PDF buffer
     const base64Data = base64Pdf.includes(',') ? base64Pdf.split(',')[1] : base64Pdf
     const pdfBuffer = Buffer.from(base64Data, "base64")
-    const uint8Array = new Uint8Array(pdfBuffer)
     
     let parsedPdf;
     try {
-      const parser = new PDFParse(uint8Array)
-      parsedPdf = await parser.getText()
+      const parseFn = typeof pdfParse === 'function' ? pdfParse : (pdfParse as any).default || pdfParse;
+      parsedPdf = await parseFn(pdfBuffer)
     } catch (pdfErr) {
       console.error("[parseCv] Failed to extract text from PDF:", pdfErr)
       res.status(422).json({ error: "Invalid PDF", message: "Could not read the PDF file. It might be corrupted or encrypted." })
       return
     }
 
-    const pdfText = parsedPdf?.text ? parsedPdf.text.trim() : (typeof parsedPdf === 'string' ? parsedPdf.trim() : '')
+    const pdfText = parsedPdf?.text ? parsedPdf.text.trim() : ''
     if (!pdfText || pdfText.length < 50) {
-      console.log(`[parseCv] Extracted text is too short or empty.`)
+      console.log(`[parseCv] Extracted text is too short or empty. Length: ${pdfText.length}`)
       res.status(422).json({ error: "Empty PDF", message: "The PDF appears to be empty or image-based (no readable text). Please upload a text-based PDF CV." })
       return
     }
@@ -90,14 +89,34 @@ IMPORTANT: You MUST return ONLY valid JSON. Do not wrap it in markdown \`\`\`jso
 
     prompt += "\n\nDocument Text:\n" + pdfText
 
-    const completion = await openai.chat.completions.create({
-      model: "deepseek-ai/deepseek-v4-flash",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 8192,
-      // @ts-ignore
-      chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
-      response_format: { type: "json_object" }
-    })
+    let completion: any = null
+    let attempts = 0
+    while (attempts < 3) {
+      try {
+        completion = await openai.chat.completions.create({
+          model: "deepseek-ai/deepseek-v4-flash",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 8192,
+          // @ts-ignore
+          chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
+          response_format: { type: "json_object" }
+        })
+        break
+      } catch (err: any) {
+        attempts++
+        if (err?.status === 529 || err?.status === 429 || err?.status >= 500) {
+          console.log(`[parseCv] LLM API returned ${err?.status}. Retrying (${attempts}/3)...`)
+          if (attempts >= 3) throw err
+          await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempts - 1))) // 2s, 4s backoff
+        } else {
+          throw err
+        }
+      }
+    }
+
+    if (!completion) {
+      throw new Error("Failed to get completion from LLM")
+    }
 
     let rawText = completion.choices[0]?.message?.content || "{}"
     rawText = rawText.trim().replace(/^```json/, '').replace(/```$/, '').trim()
