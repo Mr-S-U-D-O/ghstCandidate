@@ -1,10 +1,10 @@
 import { Request, Response } from "express"
 import OpenAI from "openai"
-import { chromium, BrowserContext } from "playwright"
+import { chromium } from "playwright"
 import { supabase } from "../supabaseClient.js"
 import { createClient } from "@supabase/supabase-js"
-import { harvestAllSources } from "../utils/jobAdapter.js"
 import { ingestFeeds } from "../utils/cron/harvester.js"
+import { extractJobFromUrl } from "../utils/jsonLdExtractor.js"
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -113,9 +113,12 @@ const RESPONSE_SCHEMA = {
   required: ["company", "role", "matchScore", "verdict", "matchesFound", "missingOrWeak", "humanInputRequired"]
 }
 
-// ── Playwright Scraper ─────────────────────────────────────────────
+// ── Playwright Tier-4 Fallback Scraper ────────────────────────────────────────
+// ONLY used by the /api/analyze-job endpoint when all 3 JSON-LD tiers fail.
+// NEVER called by huntJobs or the background harvester.
 
-async function scrapeJobPage(url: string): Promise<string> {
+async function scrapeJobPagePlaywright(url: string): Promise<string> {
+  console.log(`[Tier-4/Playwright] Launching headless Chromium for: ${url}`)
   const browser = await chromium.launch({ headless: process.env.HEADLESS === 'false' ? false : true, slowMo: 100 })
   try {
     const context = await browser.newContext({
@@ -124,11 +127,8 @@ async function scrapeJobPage(url: string): Promise<string> {
     const page = await context.newPage()
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 })
-
-    // Wait briefly for any lazy-loaded content
     await page.waitForTimeout(1500)
 
-    // Extract main text — prefer <main> or <article> if available, fall back to body
     const text = await page.evaluate(() => {
       const selectors = ["main", "article", "[data-testid*='job']", "[class*='job-description']", "body"]
       for (const sel of selectors) {
@@ -309,20 +309,27 @@ export async function analyzeJob(req: Request, res: Response): Promise<void> {
       }
     }
 
-    // Step 1: Scrape the job page
-    console.log(`[analyzeJob] Scraping: ${url}`)
+    // Step 1: Extract job description — 3-tier JSON-LD waterfall → Tier-4 Playwright fallback
+    console.log(`[analyzeJob] Extracting job data (JSON-LD → OpenGraph → BodyText → Playwright): ${url}`)
     let jobDescription: string
     try {
-      jobDescription = await scrapeJobPage(url)
+      const extracted = await extractJobFromUrl(url)
+      jobDescription = extracted.description_html || ''
+
+      // Tier-4 Playwright fallback: only fires if all 3 zero-browser tiers returned insufficient content
+      if (!jobDescription || jobDescription.length < 100) {
+        console.warn(`[analyzeJob] ⚠️ JSON-LD tiers returned insufficient content. Falling back to Tier-4 Playwright...`)
+        jobDescription = await scrapeJobPagePlaywright(url)
+      }
     } catch (scrapeErr) {
       const msg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr)
-      console.error("[analyzeJob] Playwright scrape failed:", msg)
-      res.status(422).json({ error: "Scrape Failed", message: `Could not load the URL. ${msg}` })
+      console.error("[analyzeJob] Extraction failed:", msg)
+      res.status(422).json({ error: "Extraction Failed", message: `Could not extract job content from the URL. ${msg}` })
       return
     }
 
     if (!jobDescription || jobDescription.length < 100) {
-      res.status(422).json({ error: "Scrape Empty", message: "The page loaded but contained no readable job content." })
+      res.status(422).json({ error: "Extraction Empty", message: "The page loaded but contained no readable job content after all extraction tiers." })
       return
     }
 
@@ -589,13 +596,15 @@ export async function applyJob(req: Request, res: Response): Promise<void> {
     }
 
     // 4. Generate Bespoke Documents via shared helper
+    // Use zero-browser JSON-LD extractor for JD text (Playwright browser here is for PDF rendering only)
     try {
-      const jdText = await scrapeJobPage(jobUrl)
-      console.log(`[applyJob] Scraped ${jdText.length} characters from JD.`)
+      const extracted = await extractJobFromUrl(jobUrl)
+      const jdText = extracted.description_html || ''
+      console.log(`[applyJob] Extracted ${jdText.length} characters from JD (tier: ${extracted.extractionTier ?? 'unknown'}).`)
 
       if (userId && jobMeta?.id) {
         await generateBespokeDocs({
-          jdText,
+          jdText: jdText || `Job posting at: ${jobUrl}`,
           candidateProfile,
           memories: docMemories,
           userId,
@@ -727,48 +736,61 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
 
     console.log(`[huntJobs] Proceeding to evaluate ${unEvaluatedJobs.length} jobs with Wide Net strategy.`)
 
-    // Step 5: Pre-Evaluation Engine & Board Queueing
-    const evaluatedJobs = []
-    for (const job of unEvaluatedJobs) {
+    // Step 5: Pre-Evaluation Engine — Concurrency-Capped Parallel LLM Evaluation
+    // Uses Promise.allSettled with a sliding window of 5 concurrent tasks to prevent
+    // serial LLM bottlenecking (50 sequential calls was previously 5-10 min of wall time).
+    const evaluatedJobs: any[] = []
+    const CONCURRENCY = 5
+
+    async function evaluateAndQueue(job: any): Promise<void> {
       console.log(`[huntJobs] Pre-evaluating: ${job.title} at ${job.company}`)
-      try {
-        const jobDesc = job.description || job.description_html || '';
-        const parsed = await analyzeJobText(jobDesc, candidateProfile, job.apply_url, []);
-        
-        if (parsed.matchScore >= 40) {
-          const kanbanJob = {
-            user_id: userId,
-            company: parsed.company || job.company || 'Unknown Company',
-            title: parsed.role || job.title,
-            location: job.location,
-            source_url: job.apply_url,
-            match_score: parsed.matchScore,
-            verdict: parsed.verdict,
-            matches_found: parsed.matchesFound,
-            missing_or_weak: parsed.missingOrWeak,
-            human_input_required: parsed.humanInputRequired,
-            column: 'discovered',
-            needs_input: false
-          }
+      const jobDesc = job.description || job.description_html || ''
+      const parsed = await analyzeJobText(jobDesc, candidateProfile, job.apply_url, [])
 
-          const { data: insertedJob, error: insertError } = await scopedSupabase
-            .from('jobs')
-            .insert(kanbanJob)
-            .select()
-            .single()
-
-          if (insertError) {
-            console.error(`❌ [huntJobs] Failed to insert job into Kanban:`, insertError)
-          } else if (insertedJob) {
-            console.log(`✅ [huntJobs] Queued qualified job into Kanban: ${insertedJob.title} at ${insertedJob.company} (Score: ${parsed.matchScore})`)
-            evaluatedJobs.push(insertedJob)
-          }
-        } else {
-          console.log(`[huntJobs] Skipped job (Score ${parsed.matchScore} < 40): ${job.title} at ${job.company}`)
-        }
-      } catch (e) {
-        console.error(`❌ [huntJobs] Failed to queue/evaluate job ${job.apply_url}:`, e)
+      if (parsed.matchScore < 40) {
+        console.log(`[huntJobs] Skipped (Score ${parsed.matchScore} < 40): ${job.title} at ${job.company}`)
+        return
       }
+
+      const kanbanJob = {
+        user_id: userId,
+        company: parsed.company || job.company || 'Unknown Company',
+        title: parsed.role || job.title,
+        location: job.location,
+        source_url: job.apply_url,
+        match_score: parsed.matchScore,
+        verdict: parsed.verdict,
+        matches_found: parsed.matchesFound,
+        missing_or_weak: parsed.missingOrWeak,
+        human_input_required: parsed.humanInputRequired,
+        column: 'discovered',
+        needs_input: false
+      }
+
+      const { data: insertedJob, error: insertError } = await scopedSupabase
+        .from('jobs')
+        .insert(kanbanJob)
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error(`❌ [huntJobs] Failed to insert job into Kanban:`, insertError)
+      } else if (insertedJob) {
+        console.log(`✅ [huntJobs] Queued: "${insertedJob.title}" at "${insertedJob.company}" (Score: ${parsed.matchScore})`)
+        evaluatedJobs.push(insertedJob)
+      }
+    }
+
+    // Process in sliding windows of CONCURRENCY
+    for (let i = 0; i < unEvaluatedJobs.length; i += CONCURRENCY) {
+      const batch = unEvaluatedJobs.slice(i, i + CONCURRENCY)
+      console.log(`[huntJobs] Evaluating batch ${Math.floor(i / CONCURRENCY) + 1}/${Math.ceil(unEvaluatedJobs.length / CONCURRENCY)} (${batch.length} jobs)...`)
+      const results = await Promise.allSettled(batch.map(job => evaluateAndQueue(job)))
+      results.forEach((r, idx) => {
+        if (r.status === 'rejected') {
+          console.error(`❌ [huntJobs] Batch evaluation failed for job at index ${i + idx}:`, r.reason)
+        }
+      })
     }
 
     res.json({ success: true, count: evaluatedJobs.length, jobs: evaluatedJobs })
@@ -782,25 +804,37 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
 
 // ── Seed Harvester (One-Shot Data Lake Population) ──────────────────
 
+// ── Manual Admin Trigger ────────────────────────────────────────────────────
+// Refactored from Apify-based seedHarvester to directly call the new
+// modular ingestFeeds() from the skill provider stack.
+// Use via Postman / admin UI to force a Global Harvester run on demand.
+
 export async function seedHarvester(req: Request, res: Response): Promise<void> {
-  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 500
   console.log(`\n===========================================`)
-  console.log(`[seedHarvester] Manual seed triggered. Harvesting ${limit} jobs from Apify...`)
+  console.log(`[seedHarvester] Manual admin trigger: forcing Global Harvester run...`)
   console.log(`===========================================`)
 
   try {
-    const jobs = await harvestAllSources(limit)
-    console.log(`[seedHarvester] Harvested ${jobs.length} jobs. Upserting into global_jobs...`)
+    const freshJobs = await ingestFeeds()
+    console.log(`[seedHarvester] Ingested ${freshJobs.length} jobs. Upserting into global_jobs...`)
 
-    if (jobs.length === 0) {
-      res.json({ success: true, message: 'Harvest returned 0 jobs. Check Apify token and actor availability.', inserted: 0 })
+    if (freshJobs.length === 0) {
+      res.json({ success: true, message: 'Harvest returned 0 jobs. Check provider connectivity.', inserted: 0 })
       return
     }
 
-    // Upsert with ON CONFLICT (apply_url) DO NOTHING
+    const mappedGlobalJobs = freshJobs.map(j => ({
+      title: j.title,
+      company: j.company,
+      location: j.location,
+      description: j.description_html,
+      apply_url: j.apply_url,
+      api_source: j.source
+    }))
+
     const { data, error } = await supabase
       .from('global_jobs')
-      .upsert(jobs, { onConflict: 'apply_url', ignoreDuplicates: true })
+      .upsert(mappedGlobalJobs, { onConflict: 'apply_url', ignoreDuplicates: true })
       .select()
 
     if (error) {
@@ -809,16 +843,17 @@ export async function seedHarvester(req: Request, res: Response): Promise<void> 
       return
     }
 
+    const bySource = freshJobs.reduce((acc: Record<string, number>, j) => {
+      acc[j.source] = (acc[j.source] || 0) + 1
+      return acc
+    }, {})
+
     console.log(`[seedHarvester] ✅ Seeded ${data?.length || 0} new jobs into global_jobs.`)
     res.json({
       success: true,
-      harvested: jobs.length,
+      harvested: freshJobs.length,
       inserted: data?.length || 0,
-      sources: {
-        greenhouse: jobs.filter(j => j.api_source === 'greenhouse').length,
-        lever: jobs.filter(j => j.api_source === 'lever').length,
-        ashby: jobs.filter(j => j.api_source === 'ashby').length,
-      }
+      bySource
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)

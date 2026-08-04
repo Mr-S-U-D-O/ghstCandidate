@@ -1,17 +1,29 @@
 import cron from "node-cron"
+import { createClient } from "@supabase/supabase-js"
 import { supabase } from "./supabaseClient.js"
 import { ingestFeeds } from "./utils/cron/harvester.js"
+
+// ── Service Role Client ───────────────────────────────────────────────────────
+// Used for cron-initiated writes to bypass RLS.
+// The cron runner has no user JWT, so it must use the service role key directly
+// for any INSERT/UPDATE operations into user-owned tables like `jobs`.
+
+function getServiceClient() {
+  const url = process.env.SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+  if (!url || !serviceKey) throw new Error('[Cron] SUPABASE_URL or SUPABASE_SERVICE_KEY is not set.')
+  return createClient(url, serviceKey)
+}
 
 export function initCron() {
   console.log("[Cron] Initializing Background Systems...")
 
   // ── The Harvester ───────────────────────────────────────────────
-  // Runs twice per week (Wednesday 3AM + Saturday 3AM UTC).
-  // Fetches unauthenticated JSON APIs and RSS feeds and upserts
-  // directly into the user's jobs Kanban board (State A).
+  // Runs every 6 hours (per RFC Section 6).
+  // Fetches all registered providers and upserts results into global_jobs Data Lake.
 
-  cron.schedule("0 3 * * 3,6", async () => {
-    console.log("[Cron/Harvester] 🌾 Starting bi-weekly harvest cycle...")
+  cron.schedule("0 */6 * * *", async () => {
+    console.log("[Cron/Harvester] 🌾 Starting 6-hourly harvest cycle...")
 
     try {
       const jobs = await ingestFeeds()
@@ -22,7 +34,6 @@ export function initCron() {
         return
       }
 
-      // We need to map `IngestedJob` to `global_jobs` schema
       const mappedGlobalJobs = jobs.map(j => ({
         title: j.title,
         company: j.company,
@@ -32,7 +43,6 @@ export function initCron() {
         api_source: j.source
       }))
 
-      // Upsert with ON CONFLICT (apply_url) DO NOTHING to prevent duplicates
       const { data, error } = await supabase
         .from('global_jobs')
         .upsert(mappedGlobalJobs, { onConflict: 'apply_url', ignoreDuplicates: true })
@@ -50,48 +60,57 @@ export function initCron() {
     }
   })
 
-  console.log("[Cron] ✅ Harvester scheduled: 0 3 * * 3,6 (Wed/Sat 3AM UTC)")
+  console.log("[Cron] ✅ Harvester scheduled: 0 */6 * * * (Every 6 hours)")
 
   // ── The Sweeper ─────────────────────────────────────────────────
   // Runs daily at 4AM UTC.
-  // Deletes jobs older than 30 days from the global_jobs Data Lake
-  // to keep the data fresh and the table lean.
+  // Deletes jobs older than 14 days from the global_jobs Data Lake (per RFC).
 
   cron.schedule("0 4 * * *", async () => {
     console.log("[Cron/Sweeper] 🧹 Starting daily stale job purge...")
 
     try {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      
+      // RFC Section 5: 14-day TTL (was previously 30 days)
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+
       const { data, error } = await supabase
         .from('global_jobs')
         .delete()
-        .lt('created_at', thirtyDaysAgo)
+        .lt('created_at', fourteenDaysAgo)
         .select('id')
 
       if (error) {
         console.error("[Cron/Sweeper] ❌ Delete error:", error.message)
       } else {
-        console.log(`[Cron/Sweeper] ✅ Purged ${data?.length || 0} stale jobs (older than 30 days).`)
+        console.log(`[Cron/Sweeper] ✅ Purged ${data?.length || 0} stale jobs (older than 14 days).`)
       }
     } catch (e) {
       console.error("[Cron/Sweeper] ❌ Unhandled error in sweeper:", e)
     }
   })
 
-  console.log("[Cron] ✅ Sweeper scheduled: 0 4 * * * (Daily 4AM UTC)")
+  console.log("[Cron] ✅ Sweeper scheduled: 0 4 * * * (Daily 4AM UTC, 14-day TTL)")
 
   // ── Per-User Hunt + Auto-Apply Loop ─────────────────────────────
-  // Run every 4 hours: "0 */4 * * *"
+  // Run every 4 hours.
   // Iterates over all user profiles, hunts jobs from the Data Lake,
-  // and auto-applies to high-match jobs.
+  // and auto-applies to high-match (>85%) jobs.
+  //
+  // BUG FIX: Previously called /api/apply-job (jobController, no Stagehand).
+  // Now correctly targets /api/run-agent (agentController, full Stagehand execution).
+  //
+  // BUG FIX: Previously called hunt-jobs without an auth token, causing silent
+  // RLS failures on jobs INSERT. Now uses the service role client directly for
+  // DB operations within this loop.
 
   cron.schedule("0 */4 * * *", async () => {
     console.log("[Cron] Starting background job execution cycle...")
-    
+
     try {
-      // 1. Fetch all profiles
-      const { data: profiles, error } = await supabase.from('profiles').select('*')
+      const serviceClient = getServiceClient()
+
+      // 1. Fetch all profiles using service client (bypasses RLS)
+      const { data: profiles, error } = await serviceClient.from('profiles').select('*')
       if (error) {
         console.error("[Cron] Failed to fetch profiles:", error.message)
         return
@@ -122,11 +141,18 @@ export function initCron() {
         }
 
         console.log(`[Cron] Hunting jobs for user ${userId} (${targetRole} in ${location})...`)
-        // 2. Trigger Hunter
+
+        // 2. Trigger Hunter — pass service key as a fake bearer token so the
+        //    scoped client inside huntJobs uses the service role client for writes.
+        //    The huntJobs handler creates a scoped client from the Authorization header.
+        const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || ''
         try {
           const huntRes = await fetch(`http://localhost:${process.env.PORT || 3001}/api/hunt-jobs`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${serviceKey}`
+            },
             body: JSON.stringify({
               searchRole: targetRole,
               location: location,
@@ -142,12 +168,13 @@ export function initCron() {
         }
 
         // 3. Auto-Apply to high match jobs
+        // BUG FIX: Was /api/apply-job → now correctly /api/run-agent (Stagehand)
         console.log(`[Cron] Checking for auto-apply candidates for user ${userId}...`)
-        const { data: reviewJobs, error: jobsError } = await supabase
+        const { data: reviewJobs, error: jobsError } = await serviceClient
           .from('jobs')
           .select('*')
           .eq('user_id', userId)
-          .eq('column', 'review')
+          .eq('column', 'discovered')
           .gte('match_score', 86) // > 85
 
         if (jobsError) {
@@ -156,38 +183,56 @@ export function initCron() {
         }
 
         if (reviewJobs && reviewJobs.length > 0) {
-          console.log(`[Cron] Found ${reviewJobs.length} high-match jobs for ${userId}. Initiating auto-apply...`)
+          console.log(`[Cron] Found ${reviewJobs.length} high-match jobs for ${userId}. Initiating auto-apply via Stagehand...`)
           for (const job of reviewJobs) {
-             const jobUrl = job.source_url
-             if (!jobUrl) continue
+            const jobUrl = job.source_url
+            if (!jobUrl) continue
 
-             console.log(`[Cron] Auto-applying to job ${job.id} at ${job.company}...`)
-             try {
-                const applyRes = await fetch(`http://localhost:${process.env.PORT || 3001}/api/apply-job`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    jobUrl,
-                    candidateProfile
-                  })
+            console.log(`[Cron] Auto-applying to job ${job.id} at ${job.company}...`)
+            try {
+              // BUG FIX: Targets /api/run-agent (Stagehand-powered) not /api/apply-job
+              const applyRes = await fetch(`http://localhost:${process.env.PORT || 3001}/api/run-agent`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${serviceKey}`
+                },
+                body: JSON.stringify({
+                  jobId: job.id,
+                  jobUrl,
+                  candidateProfile,
+                  userId,
+                  jobTitle: job.title,
+                  company: job.company
                 })
-                
-                if (applyRes.ok) {
-                  // Success! Update DB
-                  await supabase.from('jobs').update({ column: 'applied' }).eq('id', job.id)
-                  console.log(`[Cron] Auto-apply SUCCESS for ${job.id}`)
+              })
+
+              if (applyRes.ok) {
+                const result = await applyRes.json().catch(() => ({}))
+                if (result.success) {
+                  console.log(`[Cron] ✅ Auto-apply SUCCESS for ${job.id}`)
                 } else {
-                  const data = await applyRes.json().catch(() => ({}))
-                  if (data.status === "NEEDS_INPUT" && data.missingField) {
-                     console.log(`[Cron] Auto-apply BLOCKED for ${job.id}: Needs Input (${data.missingField})`)
-                     await supabase.from('jobs').update({ needs_input: true, missing_field: data.missingField }).eq('id', job.id)
-                  } else {
-                     console.error(`[Cron] Auto-apply FAILED for ${job.id}:`, data.message || applyRes.statusText)
+                  console.log(`[Cron] Auto-apply BLOCKED for ${job.id}: ${result.missingField || result.status}`)
+                  if (result.missingField) {
+                    await serviceClient.from('jobs')
+                      .update({ needs_input: true, missing_field: result.missingField })
+                      .eq('id', job.id)
                   }
                 }
-             } catch (e) {
-                console.error(`[Cron] Apply fetch error for ${job.id}:`, e)
-             }
+              } else {
+                const data = await applyRes.json().catch(() => ({}))
+                if (data.status === "NEEDS_INPUT" && data.missingField) {
+                  console.log(`[Cron] Auto-apply BLOCKED for ${job.id}: Needs Input (${data.missingField})`)
+                  await serviceClient.from('jobs')
+                    .update({ needs_input: true, missing_field: data.missingField })
+                    .eq('id', job.id)
+                } else {
+                  console.error(`[Cron] Auto-apply FAILED for ${job.id}:`, data.message || applyRes.statusText)
+                }
+              }
+            } catch (e) {
+              console.error(`[Cron] Apply fetch error for ${job.id}:`, e)
+            }
           }
         } else {
           console.log(`[Cron] No auto-apply candidates for user ${userId}.`)
