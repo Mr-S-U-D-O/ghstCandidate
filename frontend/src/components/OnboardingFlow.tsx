@@ -186,12 +186,20 @@ export default function OnboardingFlow() {
 
         if (!res.ok) {
           const status = res.status
-          setCvUploadState('error')
-          if (status === 413) {
-            setCvUploadError('File too large. Please use a PDF under 7MB.')
-          } else {
-            setCvUploadError(`Upload failed (HTTP ${status}). Please try again.`)
+          let errorData = null
+          try {
+            errorData = await res.json()
+          } catch (e) {
+            // response was not json
           }
+          
+          setCvUploadState('error')
+          
+          const errorMessage = errorData?.message || (status === 413 ? 'File too large. Please use a PDF under 7MB.' : `Upload failed (HTTP ${status}). Please try again.`)
+          
+          console.error(`[CV Upload] Failed with status ${status}:`, errorData || 'No additional error data')
+          setCvUploadError(errorMessage)
+          
           if (cvFileInputRef.current) cvFileInputRef.current.value = ''
           return
         }
@@ -252,12 +260,20 @@ export default function OnboardingFlow() {
 
         if (!res.ok) {
           const status = res.status
-          setClUploadState('error')
-          if (status === 413) {
-            setClUploadError('File too large. Please use a PDF under 7MB.')
-          } else {
-            setClUploadError(`Upload failed (HTTP ${status}). Please try again.`)
+          let errorData = null
+          try {
+            errorData = await res.json()
+          } catch (e) {
+            // response was not json
           }
+          
+          setClUploadState('error')
+          
+          const errorMessage = errorData?.message || (status === 413 ? 'File too large. Please use a PDF under 7MB.' : `Upload failed (HTTP ${status}). Please try again.`)
+          
+          console.error(`[Cover Letter Upload] Failed with status ${status}:`, errorData || 'No additional error data')
+          setClUploadError(errorMessage)
+          
           if (clFileInputRef.current) clFileInputRef.current.value = ''
           return
         }

@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
 import OpenAI from "openai"
+import { PDFParse } from "pdf-parse"
 
 let _openai: OpenAI | null = null
 function getOpenAI() {
@@ -24,12 +25,36 @@ export async function parseCv(req: Request, res: Response): Promise<void> {
 
     console.log(`[parseCv] Parsing uploaded document (mode: ${mode || 'cv'})...`)
 
+    // Extract raw text from the PDF buffer instead of sending the base64 string to the LLM
+    const base64Data = base64Pdf.includes(',') ? base64Pdf.split(',')[1] : base64Pdf
+    const pdfBuffer = Buffer.from(base64Data, "base64")
+    const uint8Array = new Uint8Array(pdfBuffer)
+    
+    let parsedPdf;
+    try {
+      const parser = new PDFParse(uint8Array)
+      parsedPdf = await parser.getText()
+    } catch (pdfErr) {
+      console.error("[parseCv] Failed to extract text from PDF:", pdfErr)
+      res.status(422).json({ error: "Invalid PDF", message: "Could not read the PDF file. It might be corrupted or encrypted." })
+      return
+    }
+
+    const pdfText = parsedPdf?.text ? parsedPdf.text.trim() : (typeof parsedPdf === 'string' ? parsedPdf.trim() : '')
+    if (!pdfText || pdfText.length < 50) {
+      console.log(`[parseCv] Extracted text is too short or empty.`)
+      res.status(422).json({ error: "Empty PDF", message: "The PDF appears to be empty or image-based (no readable text). Please upload a text-based PDF CV." })
+      return
+    }
+
+    console.log(`[parseCv] Extracted ${pdfText.length} characters from PDF. Sending to LLM...`)
+
     const openai = getOpenAI()
 
     let prompt = ""
     if (mode === "cover_letter") {
       prompt = `
-You are an ATS parser. The attached document is a base64 encoded PDF.
+You are an ATS parser. Extract data from this document text.
 Step 1: Validate if it is a Cover Letter. If it is NOT, return { "isValid": false }.
 Step 2: If it IS a Cover Letter, return { "isValid": true } and extract the full comprehensive text of the letter into the 'rawText' field. Provide a highly accurate, verbatim transcription or comprehensive summary of the text to prevent data loss.
 
@@ -37,7 +62,7 @@ IMPORTANT: You MUST return ONLY valid JSON. Do not wrap it in markdown \`\`\`jso
 `.trim()
     } else {
       prompt = `
-You are an ATS parser. The attached document is a base64 encoded PDF.
+You are an ATS parser. Extract data from this document text.
 Step 1: Validate if it is a CV/Resume. If it is NOT, return { "isValid": false }.
 Step 2: If it IS a CV, extract the data and return strict JSON matching this structure exactly (ensure all these keys exist):
 - isValid (boolean)
@@ -63,15 +88,12 @@ IMPORTANT: You MUST return ONLY valid JSON. Do not wrap it in markdown \`\`\`jso
 `.trim()
     }
 
-    // Gemini expected inlineData, but for DeepSeek we pass the base64 string directly into the prompt text 
-    // since it can handle extremely large contexts (1M tokens) and we are migrating off Gemini entirely.
-    const base64Data = base64Pdf.includes(',') ? base64Pdf.split(',')[1] : base64Pdf
-    prompt += "\n\nBase64 PDF Content:\n" + base64Data
+    prompt += "\n\nDocument Text:\n" + pdfText
 
     const completion = await openai.chat.completions.create({
       model: "deepseek-ai/deepseek-v4-flash",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 16384,
+      max_tokens: 8192,
       // @ts-ignore
       chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
       response_format: { type: "json_object" }
@@ -82,16 +104,28 @@ IMPORTANT: You MUST return ONLY valid JSON. Do not wrap it in markdown \`\`\`jso
     const parsed = JSON.parse(rawText)
 
     if (parsed.isValid) {
-      console.log(`[parseCv] Successfully parsed CV for: ${parsed.name}`)
+      console.log(`[parseCv] Successfully parsed document for: ${parsed.name || 'User'}`)
     } else {
-      console.log(`[parseCv] Uploaded document is not a valid CV.`)
+      console.log(`[parseCv] Uploaded document is not a valid ${mode || 'CV'}.`)
     }
 
     res.json(parsed)
 
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
+  } catch (err: any) {
+    const message = err.message || String(err)
     console.error("[parseCv] Execution failed:", message)
-    res.status(500).json({ error: "Internal Server Error", message })
+    
+    // Log extended OpenAI API errors (like 400 Bad Request reasons)
+    if (err.status) {
+      console.error(`[parseCv] API Error Status: ${err.status}`)
+    }
+    if (err.error) {
+      console.error(`[parseCv] API Error Details:`, JSON.stringify(err.error, null, 2))
+    }
+
+    res.status(502).json({ 
+      error: "AI Processing Error", 
+      message: "The AI provider failed to process your document. Please try again or use a smaller PDF." 
+    })
   }
 }

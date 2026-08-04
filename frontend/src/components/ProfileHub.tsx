@@ -102,7 +102,14 @@ export default function ProfileHub() {
         })
 
         if (!res.ok) {
-          throw new Error(`Server rejected upload (HTTP ${res.status})`)
+          let errorMsg = `Server rejected upload (HTTP ${res.status})`
+          try {
+            const errorData = await res.json()
+            if (errorData?.message) errorMsg = errorData.message
+          } catch (e) {
+            // ignore
+          }
+          throw new Error(errorMsg)
         }
 
         const data = await res.json()
