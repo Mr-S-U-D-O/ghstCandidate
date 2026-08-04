@@ -29,9 +29,21 @@ export interface ResilientFetchOptions {
   timeoutMs?: number;
   /** Max retry attempts on 429/503/529. Default: 3 */
   maxRetries?: number;
+  /** Optional Referer header to send with the request */
+  referer?: string;
   /** Additional axios config to merge in */
   axiosConfig?: AxiosRequestConfig;
 }
+
+/**
+ * Pre-configured options for fetching ATS pages (Greenhouse, Lever, Ashby).
+ * Uses a higher timeout since ATS pages are heavier than RSS feeds.
+ */
+export const ATS_FETCH_OPTIONS: ResilientFetchOptions = {
+  timeoutMs: 8000,
+  maxRetries: 3,
+  referer: 'https://www.google.com/',
+};
 
 // ── Core Fetcher ──────────────────────────────────────────────────────────────
 
@@ -63,6 +75,11 @@ export async function resilientFetch(
           'Accept-Encoding': 'gzip, deflate, br',
           'Connection': 'keep-alive',
           'Cache-Control': 'no-cache',
+          'sec-fetch-mode': 'navigate',
+          'sec-fetch-dest': 'document',
+          'sec-fetch-site': 'none',
+          'sec-fetch-user': '?1',
+          ...(options.referer ? { 'Referer': options.referer } : {}),
           ...axiosConfig.headers,
         },
         ...axiosConfig,

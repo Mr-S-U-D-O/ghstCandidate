@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { resilientFetch } from './resilientFetcher.js';
+import { resilientFetch, type ResilientFetchOptions } from './resilientFetcher.js';
 import type { IngestedJob } from '../types/portal.js';
 
 // ── JSON-LD Extractor ─────────────────────────────────────────────────────────
@@ -182,12 +182,12 @@ function extractBodyText(html: string, url: string): ExtractedJob {
  * Returns a partial IngestedJob. The caller is responsible for implementing
  * Tier-4 (Playwright) if this returns an empty or insufficient description.
  */
-export async function extractJobFromUrl(url: string): Promise<ExtractedJob> {
+export async function extractJobFromUrl(url: string, fetchOptions: ResilientFetchOptions = {}): Promise<ExtractedJob> {
   console.log(`[jsonLdExtractor] Fetching: ${url}`);
 
   let html: string;
   try {
-    html = await resilientFetch(url, { timeoutMs: 5000 });
+    html = await resilientFetch(url, { timeoutMs: 5000, ...fetchOptions });
   } catch (err: any) {
     console.error(`[jsonLdExtractor] ❌ Fetch failed for "${url}":`, err.message);
     return {

@@ -1,0 +1,1099 @@
+﻿=== [Smoke Test] JSON-LD Extractor ÔÇö extractJobFromUrl() ===
+
+Testing: https://boards.greenhouse.io/vercel/jobs/5478042
+[jsonLdExtractor] Fetching: https://boards.greenhouse.io/vercel/jobs/5478042
+node.exe : [resilientFetch] ÔÜá´©Å HTTP ECONNABORTED on "https://boards.greenhouse.io/vercel/jobs/5478042". Retrying 
+in 2816ms (attempt 1/3)...
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([resilientFetch...attempt 1/3)...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[resilientFetch] ÔÜá´©Å HTTP ECONNABORTED on "https://boards.greenhouse.io/vercel/jobs/5478042". Retrying in 4465ms 
+(attempt 2/3)...
+[jsonLdExtractor] ÔÜá´©Å Falling back to Tier 3 (body text) for: https://boards.greenhouse.io/vercel/jobs/5478042
+  Tier used: 3
+  Title: Current openings at Vercel
+  Company: Unknown Company
+  Location: Unknown
+  Description: Current openings at VercelCreate a Job AlertLevel-up your career by having opportunities at Vercel s...
+
+Testing: https://weworkremotely.com/remote-jobs/openai-senior-software-engineer-inference
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/openai-senior-software-engineer-inference
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/openai-senior-software-engineer-inference": Request failed with status code 403
+  Tier used: 3
+  Title: Unknown Title
+  Company: Unknown Company
+  Location: Unknown
+  Description: ...
+
+=== [Smoke Test] Global Harvester ÔÇö ingestFeeds() ===
+
+[Harvester] Starting ingestion across 3 providers...
+[Harvester] ÔåÆ Fetching from: Jobicy
+[Jobicy] Fetching from https://jobicy.com/api/v2/remote-jobs?count=100...
+[Jobicy] Ô£à Fetched 100 jobs.
+[Harvester] Ô£à Jobicy: 100 jobs ingested.
+[Harvester] ÔåÆ Fetching from: WeWorkRemotely
+[WeWorkRemotely] Fetching 6 RSS feeds...
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cloudflare-principal-partner-solutions-engineer-saarc-based-in-bangalore
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/cloudflare-principal-partner-solutions-engineer-saarc-based-in-bangalore
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gusto-inc-business-money-engineering
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/gusto-inc-business-money-engineering
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cloudflare-country-director-india
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/cloudflare-country-director-india": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/maptiler-location-services-engineer-maps-platform-remote-in-europe
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/maptiler-location-services-engineer-maps-platform-remote-in-europe": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stellar-ai-senior-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stellar-ai-senior-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-python-3
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-python-3": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/steady-vision-web-designer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/steady-vision-web-designer": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/silvertech-account-director
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/silvertech-account-director": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/work-and-study-travel-website-builder-wordpress-specialist
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/work-and-study-travel-website-builder-wordpress-specialist": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/snapscale-wp-dev-remote
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/snapscale-wp-dev-remote": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-java-backend-developer
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/proxify-ab-senior-java-backend-developer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-frontend-developer-react-js-next-js-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-frontend-developer-react-js-next-js-1": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-react-js-node-js-2
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-react-js-node-js-2": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-ruby-on-rails-developer-3
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-ruby-on-rails-developer-3": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-backend-developer-python-8
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/proxify-ab-senior-backend-developer-python-8
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/sticker-mule-software-engineer-3
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/sticker-mule-software-engineer-3": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cortes-23-senior-qa-engineer-2
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/cortes-23-senior-qa-engineer-2": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/bunny-net-staff-software-engineer-magic-containers
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/bunny-net-staff-software-engineer-magic-containers
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/wonderdog-full-stack-product-engineer-agentic-first
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/wonderdog-full-stack-product-engineer-agentic-first
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/lemon-io-senior-react-full-stack-developer-5
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/lemon-io-senior-react-full-stack-developer-5": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/vidalytics-ai-automation-engineer-in-house-martech-video-saas
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/vidalytics-ai-automation-engineer-in-house-martech-video-saas": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/vidalytics-europe-only-gtm-martech-engineer-growth-attribution-at-video-martech-saas
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/vidalytics-europe-only-gtm-martech-engineer-growth-attribution-at-video-martech-saas
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/a-team-senior-independent-ai-engineer-architect
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/a-team-senior-independent-ai-engineer-architect": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/a-team-senior-independent-software-developer-90-170-hr
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/a-team-senior-independent-software-developer-90-170-hr": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/hyphen-connect-limited-lead-product-designer-crypto-exchange
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/hyphen-connect-limited-lead-product-designer-crypto-exchange": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/lithic-senior-compliance-analyst
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/lithic-senior-compliance-analyst": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/faire-senior-staff-data-engineer-platform-data-and-analytics
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/faire-senior-staff-data-engineer-platform-data-and-analytics": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/doximity-data-engineering-manager
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/doximity-data-engineering-manager
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/doximity-data-analyst-reporting-partnerships
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/doximity-data-analyst-reporting-partnerships": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/clickhouse-ai-product-engineer-clickstack-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/clickhouse-ai-product-engineer-clickstack-1": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/clickhouse-ai-product-engineer-clickstack
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/clickhouse-ai-product-engineer-clickstack
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/superplane-product-engineer-1
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/superplane-product-engineer-1": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/hygraph-senior-fullstack-engineer-f-m-d-berlin-i-germany-emea-i-remote
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/hygraph-senior-fullstack-engineer-f-m-d-berlin-i-germany-emea-i-remote
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/maven-clinic-design-lead-consumer
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/maven-clinic-design-lead-consumer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/customer-io-director-engineering
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/customer-io-director-engineering
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/maven-clinic-content-creative-strategist
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/maven-clinic-content-creative-strategist
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/onthegosystems-ai-native-software-developer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/onthegosystems-ai-native-software-developer": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/lemon-io-senior-vue-developer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/lemon-io-senior-vue-developer": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-senior-director-revenue-operations
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/dropbox-senior-director-revenue-operations": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/hightouch-ai-strategy-consultant
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/hightouch-ai-strategy-consultant
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/collibra-director-facility-security-officer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/collibra-director-facility-security-officer": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gitlab-ai-transformation-owner-cro
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/gitlab-ai-transformation-owner-cro": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer-identity
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer-identity": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gitlab-ai-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/gitlab-ai-engineer": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer-fraud
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer-fraud": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/reddit-ads-conversion-modeling-machine-learning-engineering-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/reddit-ads-conversion-modeling-machine-learning-engineering-manager": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/mindrift-freelance-full-stack-web-app-developer-1
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/mindrift-freelance-full-stack-web-app-developer-1
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jobgether-product-manager-progressive-web-apps-pwa
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/jobgether-product-manager-progressive-web-apps-pwa": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/wevote-general-volunteering-opportunities-digital-democracy
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/wevote-general-volunteering-opportunities-digital-democracy": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/esm-intermediate-web-applications-developer-java-aws-remote
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/esm-intermediate-web-applications-developer-java-aws-remote": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-data-platform
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-data-platform": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-blockchain-platform
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-blockchain-platform": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-sourcing-analyst
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-sourcing-analyst
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-senior-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-full-stack-coinbase-advisor-agentic-trading
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-full-stack-coinbase-advisor-agentic-trading
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-partner-enablement-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-partner-enablement-manager": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-developer-infrastructure
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-developer-infrastructure": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-manager-software-engineering
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-manager-software-engineering": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-manager-machine-learning
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-manager-machine-learning": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-core-ai-infrastructure
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-core-ai-infrastructure": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-consumer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-consumer": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-cdp-money-movement
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-cdp-money-movement": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-strategy-ops-intercept
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stripe-strategy-ops-intercept": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media-1
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media-1
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-v-v-media": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-staff-full-stack-engineer-identity
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-staff-full-stack-engineer-identity": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-voice-and-video
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-engineering-manager-voice-and-video": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-solutions-architect-enterprise-pre-sales
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-solutions-architect-enterprise-pre-sales": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-cloud-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-senior-cloud-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-payroll-specialist
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-senior-payroll-specialist": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-manager-internal-audit-it
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-manager-internal-audit-it
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-manager-clearing-operations
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-manager-clearing-operations": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-machine-learning-engineer-cx-intelligence
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-machine-learning-engineer-cx-intelligence": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-security-analyst-bug-bounty
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stripe-security-analyst-bug-bounty": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-machine-learning-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-machine-learning-engineer": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-project-manager-3
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-project-manager-3": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-risk-strategist-screening-financial-crimes
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/stripe-risk-strategist-screening-financial-crimes
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-insider-threat-analyst
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-insider-threat-analyst": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-principal-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-principal-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-finance-strategy-analyst-consumer
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-finance-strategy-analyst-consumer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-data-scientist-cx-analytics
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-data-scientist-cx-analytics": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-risk-operations-program-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-risk-operations-program-manager": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-project-manager-global-expansion
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-project-manager-global-expansion": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-analytics-engineer-platform-financial-analytics
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-analytics-engineer-platform-financial-analytics
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-analyst-compliance-technology
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-analyst-compliance-technology": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-regional-threat-assessment-manager-2
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-regional-threat-assessment-manager-2": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-program-manager-gtm-planning
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/stripe-program-manager-gtm-planning
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-regional-threat-assessment-manager-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-regional-threat-assessment-manager-1": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-regional-threat-assessment-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-regional-threat-assessment-manager": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-principal-engineer-l5
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-principal-engineer-l5": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-privacy-operations-program-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-privacy-operations-program-manager": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-principal-engineer
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/twilio-principal-engineer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-principal-design-researcher
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-principal-design-researcher": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-paralegal-litigation
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-paralegal-litigation": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-operations-senior-associate
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-operations-senior-associate
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-operations-senior-associate
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-operations-senior-associate
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-manager-corporate-programs
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-manager-corporate-programs": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-m-a-and-accounting-policy-manager
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-m-a-and-accounting-policy-manager
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-people-project-manager
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stripe-people-project-manager": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-manager-software-engineering-l4
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-manager-software-engineering-l4": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-staff-software-engineer-security-agent-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-staff-software-engineer-security-agent-1": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-staff-software-engineer-security-agent
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-staff-software-engineer-security-agent": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-internal-audit-analyst
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-internal-audit-analyst": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-insider-threat-analyst
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-insider-threat-analyst": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-machine-learning-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-machine-learning-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-hr-business-partner
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-hr-business-partner": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-machine-learning-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-machine-learning-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-staff-fullstack-software-engineer-core-performance
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/dropbox-staff-fullstack-software-engineer-core-performance": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-head-of-finance-canada
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-head-of-finance-canada": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-head-of-self-serve-paid-media
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/stripe-head-of-self-serve-paid-media
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-staff-fullstack-software-engineer-core-performance
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/dropbox-staff-fullstack-software-engineer-core-performance": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-frontend-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-frontend-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-gtm-operations-process-architect
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-gtm-operations-process-architect": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-fullstack-engineer-privy
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stripe-fullstack-engineer-privy": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-gfco-program-manager
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-gfco-program-manager
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-creative-director
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-creative-director": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-software-engineer-infrastructure-8-yoe
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/airtable-software-engineer-infrastructure-8-yoe": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-executive-engagement-lead-office-of-the-cro
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-executive-engagement-lead-office-of-the-cro": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-software-engineer-compute-8-yoe
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/airtable-software-engineer-compute-8-yoe": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-counsel-commercial
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-counsel-commercial": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-senior-solutions-architect
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/airtable-senior-solutions-architect
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-senior-solutions-architect-west-coast
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/airtable-senior-solutions-architect-west-coast
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-concierge-specialist-iv-1
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-concierge-specialist-iv-1
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gusto-inc-staff-software-engineer-ai-developer-tools
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/gusto-inc-staff-software-engineer-ai-developer-tools": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-senior-manager-marketing-ai-operations
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/airtable-senior-manager-marketing-ai-operations": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-communications-manager-policy-public-affairs
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-communications-manager-policy-public-affairs": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-head-of-field-and-partner-marketing
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/dropbox-head-of-field-and-partner-marketing": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-credit-risk-analyst-north-american-underwriter
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-credit-risk-analyst-north-american-underwriter": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-business-operations-senior-associate-institutional
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-business-operations-senior-associate-institutional": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-program-manager-professional-services-west
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/airtable-program-manager-professional-services-west": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-credit-risk-analyst-commercial-underwriter-west-coast
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-credit-risk-analyst-commercial-underwriter-west-coast": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-program-manager-professional-services-east
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/airtable-program-manager-professional-services-east": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/airtable-manager-sales-strategy-planning
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/airtable-manager-sales-strategy-planning
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gusto-inc-retirement-implementation-specialist
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/gusto-inc-retirement-implementation-specialist": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-analytics-engineer-gfco-analytics
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-analytics-engineer-gfco-analytics": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gusto-inc-enterprise-application-ai-architect
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/gusto-inc-enterprise-application-ai-architect": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cloudflare-principal-partner-solutions-engineer-saarc-based-in-bangalore
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/cloudflare-principal-partner-solutions-engineer-saarc-based-in-bangalore": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gusto-inc-business-money-engineering
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/gusto-inc-business-money-engineering": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cloudflare-country-director-india
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/cloudflare-country-director-india": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-react-js-node-js-2
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-react-js-node-js-2": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/wonderdog-full-stack-product-engineer-agentic-first
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/wonderdog-full-stack-product-engineer-agentic-first": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/lemon-io-senior-react-full-stack-developer-5
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/lemon-io-senior-react-full-stack-developer-5": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/vidalytics-europe-only-gtm-martech-engineer-growth-attribution-at-video-martech-saas
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/vidalytics-europe-only-gtm-martech-engineer-growth-attribution-at-video-martech-saas
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/hyphen-connect-limited-lead-product-designer-crypto-exchange
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/hyphen-connect-limited-lead-product-designer-crypto-exchange": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-python-3
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/proxify-ab-senior-fullstack-developer-python-3
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cortes-23-senior-qa-engineer-2
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/cortes-23-senior-qa-engineer-2": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/sticker-mule-software-engineer-3
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/sticker-mule-software-engineer-3": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stellar-ai-senior-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stellar-ai-senior-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/a-team-senior-independent-ai-engineer-architect
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/a-team-senior-independent-ai-engineer-architect": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/a-team-senior-independent-software-developer-90-170-hr
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/a-team-senior-independent-software-developer-90-170-hr": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/storetasker-senior-shopify-developer-remote-flexible-3
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/storetasker-senior-shopify-developer-remote-flexible-3": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/yoko-co-front-end-wordpress-developer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/yoko-co-front-end-wordpress-developer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/bybit-blockchain-risk-control-research-intern
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/bybit-blockchain-risk-control-research-intern
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-technical-solutions-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stripe-technical-solutions-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-frontend-consumer-payments
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-frontend-consumer-payments": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-machine-learning-engineer-cx-intelligence
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-machine-learning-engineer-cx-intelligence": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-frontend-product-software-engineer-design-systems
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/dropbox-frontend-product-software-engineer-design-systems": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-director-product-design
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/dropbox-director-product-design": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-director-product-design
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/dropbox-director-product-design
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/steady-vision-web-designer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/steady-vision-web-designer": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/silvertech-account-director
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/silvertech-account-director": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/work-and-study-travel-website-builder-wordpress-specialist
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/work-and-study-travel-website-builder-wordpress-specialist": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/snapscale-wp-dev-remote
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/snapscale-wp-dev-remote": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-frontend-developer-react-js-next-js-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-frontend-developer-react-js-next-js-1": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/speechify-inc-senior-software-engineer-web-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/speechify-inc-senior-software-engineer-web-1": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jetbrains-backend-customer-success-engineer-kotlin-ecosystem
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/jetbrains-backend-customer-success-engineer-kotlin-ecosystem": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/launchdarkly-backend-engineer-flag-delivery
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/launchdarkly-backend-engineer-flag-delivery": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-legal-automation
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-legal-automation": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/reddit-backend-engineer-moderation-enforcement
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/reddit-backend-engineer-moderation-enforcement": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-finance-automation
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-finance-automation": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-data-layer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-data-layer": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/nuuly-nuuly-senior-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/nuuly-nuuly-senior-software-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/redspace-senior-software-developer-ad-tech
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/redspace-senior-software-developer-ad-tech": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cfive-solutions-senior-web-developer-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/cfive-solutions-senior-web-developer-software-engineer": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/business-web-solutions-web-developer-intern
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/business-web-solutions-web-developer-intern": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/penn-interactive-web-developer-casino
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/penn-interactive-web-developer-casino
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ahu-technologies-industrial-painter
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/ahu-technologies-industrial-painter
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-core-automation
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-staff-software-engineer-core-automation
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-technical-program-manager-risk
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stripe-technical-program-manager-risk": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-blockchain-network
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-blockchain-network": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-backend-consumer-risk
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-backend-consumer-risk
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-backend-platform-core-ai-automation
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-backend-platform-core-ai-automation": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-backend-consumer-prediction-markets
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-backend-consumer-prediction-markets": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-software-engineer-optimized-checkout-link
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-software-engineer-optimized-checkout-link": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-payments-risk-analyst-ii
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-payments-risk-analyst-ii": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-software-engineer-redapl-graph-engine
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/datadog-senior-software-engineer-redapl-graph-engine
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-developer-advocate-data-observability
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-senior-developer-advocate-data-observability": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-backend-engineer-core-technology
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-backend-engineer-core-technology": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-backend-engineer-ai-security
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/stripe-backend-engineer-ai-security": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/maptiler-location-services-engineer-maps-platform-remote-in-europe
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/maptiler-location-services-engineer-maps-platform-remote-in-europe": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-java-backend-developer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-java-backend-developer": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-ruby-on-rails-developer-3
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-ruby-on-rails-developer-3": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proxify-ab-senior-backend-developer-python-8
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/proxify-ab-senior-backend-developer-python-8": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/vidalytics-ai-automation-engineer-in-house-martech-video-saas
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/vidalytics-ai-automation-engineer-in-house-martech-video-saas
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/bunny-net-staff-software-engineer-magic-containers
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/bunny-net-staff-software-engineer-magic-containers": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/reveleer-full-stack-ai-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/reveleer-full-stack-ai-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/platform-sh-it-systems-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/platform-sh-it-systems-engineer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/keeper-security-account-manager
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/keeper-security-account-manager
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/customer-io-contract-it-specialist
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/customer-io-contract-it-specialist
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/abnormal-content-strategist
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/abnormal-content-strategist": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-senior-security-engineer-incident-response
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-senior-security-engineer-incident-response": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-infrastructure-compute-platform-1
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-infrastructure-compute-platform-1
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-infrastructure-compute-platform
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-infrastructure-compute-platform
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-eaa
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-eaa
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-1
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/coinbase-senior-software-engineer-1": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-security-engineer-incident-response
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-security-engineer-incident-response": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-security-engineer-incident-response
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-security-engineer-incident-response": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-security-compliance-regulatory-affairs-analyst
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/twilio-security-compliance-regulatory-affairs-analyst": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-emea
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-emea": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/brightorder-full-stack-developer-devops-cloud-systems
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/brightorder-full-stack-developer-devops-cloud-systems": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/proctoru-devops-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/proctoru-devops-engineer": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/sailpoint-manager-devops
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/sailpoint-manager-devops": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ppg-it-team-manager-devops-m-f-x
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/ppg-it-team-manager-devops-m-f-x": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coders-brain-technology-devops-eng_roji
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coders-brain-technology-devops-eng_roji": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-technical-account-manager-2-south-africa
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-technical-account-manager-2-south-africa": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-internal-audit-it-manager
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/coinbase-internal-audit-it-manager
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-internal-audit-it-associate-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-internal-audit-it-associate-manager": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-ohio-valley
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-ohio-valley": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-majors-uk-nordics-netherlands
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-majors-uk-nordics-netherlands": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-majors-france
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-majors-france
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-majors-east
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-majors-east": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-key-accounts-central
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-key-accounts-central
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-key-accounts
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-senior-sales-engineer-key-accounts": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-global-sales-enablement-systems-administrator
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-global-sales-enablement-systems-administrator": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-security-sales-engineer
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/datadog-security-sales-engineer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-pan-emea-gsi
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-pan-emea-gsi": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-gsi-amer-west
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-gsi-amer-west
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-colombia
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-partner-solutions-architect-colombia": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-partner-manager-channels
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/datadog-partner-manager-channels": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-enterprise-sales-engineer-uk
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/datadog-enterprise-sales-engineer-uk
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/datadog-enterprise-sales-engineer-rockies
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/datadog-enterprise-sales-engineer-rockies": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/toparo-devops-director
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/toparo-devops-director": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/modivcare-senior-manager-devops
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/modivcare-senior-manager-devops": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/miratech-devops-engineer-with-splunk
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/miratech-devops-engineer-with-splunk": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/firstup-director-of-cloud-operations
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/firstup-director-of-cloud-operations
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/leidos-oci-devops-engineer
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/leidos-oci-devops-engineer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/wme-senior-devops-engineer-applications
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/wme-senior-devops-engineer-applications": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/icf-senior-devops-engineer
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/icf-senior-devops-engineer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/avalon-administrative-services-devops-engineer-iii
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/avalon-administrative-services-devops-engineer-iii": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/carnival-corporation-engineer-sr-devops
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/carnival-corporation-engineer-sr-devops": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/launch-legends-senior-devops-engineer-web3
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/launch-legends-senior-devops-engineer-web3": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/bright-vision-technologies-site-reliability-engineer-sre-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/bright-vision-technologies-site-reliability-engineer-sre-1": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/medfar-specialiste-devops
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/medfar-specialiste-devops": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/five9-senior-devops-engineer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/five9-senior-devops-engineer": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/borrowell-sr-devops-engineer
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/borrowell-sr-devops-engineer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/common-securitization-solutions-devops-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/common-securitization-solutions-devops-engineer": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ignition-inc-mac-msp-help-desk-guru-work-from-home
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/ignition-inc-mac-msp-help-desk-guru-work-from-home
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/uptalent-io-remote-interior-designer-revit-design-focused-2
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/uptalent-io-remote-interior-designer-revit-design-focused-2": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/uptalent-io-remote-interior-designer-revit-design-focused-2
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/uptalent-io-remote-interior-designer-revit-design-focused-2": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jobgether-real-estate-photo-editor-1
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/jobgether-real-estate-photo-editor-1": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/uptalent-io-remote-landscape-architect-with-us-experience-1
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/uptalent-io-remote-landscape-architect-with-us-experience-1
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/capslock-generative-ai-pipeline-engineer-tech-lead-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/capslock-generative-ai-pipeline-engineer-tech-lead-1": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ehvert-engineering-a-salas-o-brien-company-electrical-design-engineer-estonia
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/ehvert-engineering-a-salas-o-brien-compa
+ny-electrical-design-engineer-estonia": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/remote-talent-latam-disenador-grafico-con-motion-graphics-remote-latam-only-80010
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/remote-talent-latam-disenador-grafico-co
+n-motion-graphics-remote-latam-only-80010": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jobgether-freelance-graphic-designer-signage-designer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/jobgether-freelance-graphic-designer-signage-designer": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ilogos-2d-character-concept-artist
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/ilogos-2d-character-concept-artist": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ilogos-lead-delivery-manager-technical-lead
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/ilogos-lead-delivery-manager-technical-lead": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/sunotec-electrical-design-engineer-renewable-energy-systems-fully-remote-hybrid-or-office-based
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/sunotec-electrical-design-engineer-renewable-energy-systems-fully-remote-hybrid-or-office-based
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ehvert-engineering-a-salas-o-brien-company-design-project-manager-estonia
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/ehvert-engineering-a-salas-o-brien-company-design-project-manager-estonia
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/uptalent-io-remote-interior-designer-revit-design-focused-1
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/uptalent-io-remote-interior-designer-revit-design-focused-1
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/capslock-generative-ai-pipeline-engineer-tech-lead
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/capslock-generative-ai-pipeline-engineer-tech-lead": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/neo-group-graphic-designer-smm
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/neo-group-graphic-designer-smm": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/prismfly-product-data-analyst-internship
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/prismfly-product-data-analyst-internship
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/cornelis-networks-inc-asic-design-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/cornelis-networks-inc-asic-design-engineer": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/pavago-product-designer-ux-ui-design-systems-remote
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/pavago-product-designer-ux-ui-design-systems-remote": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/clario-solutions-design-analyst
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/clario-solutions-design-analyst": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/uptalent-io-remote-landscape-designer-with-landfx-experience
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/uptalent-io-remote-landscape-designer-with-landfx-experience": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jobgether-real-estate-photo-editor
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/jobgether-real-estate-photo-editor": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/uptalent-io-revit-expert-for-interior-design-documentation-1
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/uptalent-io-revit-expert-for-interior-design-documentation-1
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/oklo-core-mechanical-design-senior-mechanical-design-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/oklo-core-mechanical-design-senior-mechanical-design-engineer": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/ehvert-engineering-a-salas-o-brien-company-controls-design-modeller-electrical-elv
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/ehvert-engineering-a-salas-o-brien-company-controls-design-modeller-electrical-elv
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/uptalent-io-remote-archicad-expert-for-interior-design-documentation
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/uptalent-io-remote-archicad-expert-for-interior-design-documentation
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/kalungi-inc-syntropy-sculptor-b2b-saas-brand-design
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/kalungi-inc-syntropy-sculptor-b2b-saas-brand-design": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/smartsheet-director-product-design-remote-eligible
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/smartsheet-director-product-design-remote-eligible": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/gorin-systems-software-ux-ui-design-lead-remote
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/gorin-systems-software-ux-ui-design-lead-remote": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/tarkett-regional-civil-design-engineer-project-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/tarkett-regional-civil-design-engineer-project-manager": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/regex-seo-web-designer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/regex-seo-web-designer": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dexcom-senior-software-design-assurance-sr-software-design-quality-engineer
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/dexcom-senior-software-design-assurance-sr-software-design-quality-engineer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/workiva-lead-sales-compensation-design-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/workiva-lead-sales-compensation-design-manager": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/trust-based-mobility-video-editing-specialist-direct-response-ai-video-editor
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/trust-based-mobility-video-editing-speci
+alist-direct-response-ai-video-editor": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-user-risk-strategist-ecosystem-risk-strategy
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/stripe-user-risk-strategist-ecosystem-risk-strategy
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-senior-staff-product-designer-risk
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/stripe-senior-staff-product-designer-risk
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-risk-strategist-card-network-compliance
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/stripe-risk-strategist-card-network-compliance": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/stripe-program-manager-risk-ops-enablement
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/stripe-program-manager-risk-ops-enablement
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-principal-presales-engineer-1
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-principal-presales-engineer-1": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/10-ancestry-com-operations-principal-design-engineer-storytelling
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/10-ancestry-com-operations-principal-design-engineer-storytelling
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/twilio-lead-product-designer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/twilio-lead-product-designer": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-senior-infrastructure-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/dropbox-senior-infrastructure-software-engineer": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/coinbase-derivative-sales-analyst-prosumer-sales
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/coinbase-derivative-sales-analyst-prosumer-sales": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-principal-product-designer-1
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/dropbox-principal-product-designer-1": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-principal-product-designer
+[jsonLdExtractor] Ô£à Tier 2 (OpenGraph) success for: https://weworkremotely.com/remote-jobs/dropbox-principal-product-designer
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/dropbox-infrastructure-software-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/dropbox-infrastructure-software-engineer": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/studyflix-praktikum-grafik-design-medienkommunikation-m-w-d
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/studyflix-praktikum-grafik-design-medienkommunikation-m-w-d": Request failed 
+with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/iron-mountain-emea-design-manager
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/iron-mountain-emea-design-manager": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/design-develop-now-digital-project-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/design-develop-now-digital-project-manager": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/analog-devices-senior-design-verification-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/analog-devices-senior-design-verification-engineer": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/diversified-design-engineer-2-specialist-virtual-us
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/diversified-design-engineer-2-specialist-virtual-us": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/garden3d-head-of-design
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/garden3d-head-of-design": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jobgether-senior-mobile-ux-designer
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/jobgether-senior-mobile-ux-designer": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/education-sub-saharan-africa-consultancy-design-and-implementation-of-acsl-impact-studies
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/education-sub-saharan-africa-consultancy
+-design-and-implementation-of-acsl-impact-studies": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/anthropic-safeguards-enforcement-analyst-age-appropriate-design
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/anthropic-safeguards-enforcement-analyst-age-appropriate-design": Request 
+failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/te-connectivity-product-manager-iv-remote-seattle-wa
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/te-connectivity-product-manager-iv-remote-seattle-wa": Request failed with 
+status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/te-connectivity-ai-business-acceleration-manager-remote-harrisburg-pa-area
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/te-connectivity-ai-business-acceleration-manager-remote-harrisburg-pa-area": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/te-connectivity-product-manager-iii-remote
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/te-connectivity-product-manager-iii-remote": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/astreya-ai-infrastructure-dc-design-engineer-ii
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/astreya-ai-infrastructure-dc-design-engineer-ii": Request failed with status 
+code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/te-connectivity-sr-r-d-product-dvl-engineer
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/te-connectivity-sr-r-d-product-dvl-engineer": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jll-strategic-sourcing-specialist
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/jll-strategic-sourcing-specialist": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/innovapptive-solution-consulting-lead
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/innovapptive-solution-consulting-lead": 
+Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/jll-occupancy-planner-emea
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://weworkremotely.com/remote-jobs/jll-occupancy-planner-emea
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/viking-pump-hygienic-commodity-manager
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/viking-pump-hygienic-commodity-manager": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/te-connectivity-staff-mechanical-product-development-engineer-integrated-predictive-analysis
+[jsonLdExtractor] ÔØî Fetch failed for "https://weworkremotely.com/remote-jobs/te-connectivity-staff-mechanical-product
+-development-engineer-integrated-predictive-analysis": Request failed with status code 403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/loosegrip-junior-designer-part-time-contract
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/loosegrip-junior-designer-part-time-contract": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/food-service-specialties-back-office-support
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/food-service-specialties-back-office-support": Request failed with status code 
+403
+[jsonLdExtractor] Fetching: https://weworkremotely.com/remote-jobs/hospitable-staff-ui-ux-product-designer-usa-emea-remote-1
+[jsonLdExtractor] ÔØî Fetch failed for 
+"https://weworkremotely.com/remote-jobs/hospitable-staff-ui-ux-product-designer-usa-emea-remote-1": Request failed 
+with status code 403
+[WeWorkRemotely] Ô£à Fetched 318 jobs across all feeds.
+[Harvester] Ô£à WeWorkRemotely: 318 jobs ingested.
+[Harvester] ÔåÆ Fetching from: HireResolveSA
+[HireResolveSA] Fetching 2 RSS feeds...
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/senior-java-developer-3/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/senior-java-developer-3/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/senior-bi-developer/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/senior-bi-developer/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/digital-marketer-social-media-manager-2/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/digital-marketer-social-media-manager-2/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/social-media-and-marketing-position-5/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/social-media-and-marketing-position-5/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/team-lead-2/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/team-lead-2/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/team-lead-3/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/team-lead-3/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/team-lead-4/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/team-lead-4/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/team-lead/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/team-lead/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/co-ordinator-payroll-and-finance-5/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/co-ordinator-payroll-and-finance-5/
+[jsonLdExtractor] Fetching: https://hireresolve.co.za/job/senior-toolmaker-10/
+[jsonLdExtractor] Ô£à Tier 1 (JSON-LD) success for: https://hireresolve.co.za/job/senior-toolmaker-10/
+[HireResolveSA] Ô£à Fetched 10 jobs.
+[Harvester] Ô£à HireResolveSA: 10 jobs ingested.
+[Harvester] Ô£à Ingestion complete: 428 total ÔåÆ 394 unique jobs.
+
+Ô£à 394 unique jobs ingested.
+
+  [Jobicy] "Freelance Software Tester (Infinitum/Telcel Users)" at "Testlio" (Mexico)
+  URL: https://jobicy.com/jobs/150208-freelance-software-tester-infinitum-telcel-users
+  Description length: 3089 chars
+
+  [Jobicy] "Senior Business Analyst, AI & Data" at "phData" (LATAM)
+  URL: https://jobicy.com/jobs/150207-senior-business-analyst-ai-data
+  Description length: 7542 chars
+
+  [Jobicy] "Staff Data Scientist - Ads Measurement, Signals, Privacy" at "Reddit" (Canada)
+  URL: https://jobicy.com/jobs/150206-staff-data-scientist-ads-measurement-signals-privacy
+  Description length: 5995 chars
+

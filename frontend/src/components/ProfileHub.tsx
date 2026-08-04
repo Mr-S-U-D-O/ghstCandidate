@@ -92,16 +92,18 @@ export default function ProfileHub() {
     try {
       const reader = new FileReader()
       reader.onload = async (event) => {
-        const base64Str = (event.target?.result as string).split(',')[1]
-        if (!base64Str) throw new Error("Failed to read file as base64")
+        const base64Data = event.target?.result as string
+        if (!base64Data) throw new Error('Failed to read file as base64')
 
         const res = await fetch(`${API_BASE_URL}/api/parse-cv`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfBase64: base64Str })
+          body: JSON.stringify({ base64Pdf: base64Data })
         })
 
-        if (!res.ok) throw new Error("Failed to parse CV")
+        if (!res.ok) {
+          throw new Error(`Server rejected upload (HTTP ${res.status})`)
+        }
 
         const data = await res.json()
         const merged = { ...candidateProfile, ...data }

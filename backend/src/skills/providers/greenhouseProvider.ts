@@ -1,4 +1,5 @@
 import { extractJobFromUrl } from '../../utils/jsonLdExtractor.js';
+import { ATS_FETCH_OPTIONS } from '../../utils/resilientFetcher.js';
 import type { IngestedJob, JobPortalProvider } from '../../types/portal.js';
 
 // ── Greenhouse URL Resolver ───────────────────────────────────────────────────
@@ -39,7 +40,7 @@ export async function resolveGreenhouseUrl(url: string): Promise<IngestedJob | n
   }
 
   console.log(`[Greenhouse] Resolving: ${url}`);
-  const extracted = await extractJobFromUrl(url);
+  const extracted = await extractJobFromUrl(url, ATS_FETCH_OPTIONS);
 
   if (!extracted.description_html || extracted.description_html.length < 100) {
     console.warn(`[Greenhouse] ⚠️ Insufficient description extracted from: ${url}`);

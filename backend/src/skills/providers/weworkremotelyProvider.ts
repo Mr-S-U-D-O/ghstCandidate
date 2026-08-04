@@ -38,14 +38,36 @@ export const weworkremotelyProvider: JobPortalProvider = {
           const postingUrl = item.link || '';
           if (!postingUrl) continue;
 
-          // Resolve the actual posting for the full description
-          const extracted = await extractJobFromUrl(postingUrl);
+          // P0 Fix: WWR RSS items embed the full job description in the CDATA
+          // <content:encoded> field (exposed as item.content by rss-parser).
+          // We use this directly to avoid a secondary HTTP fetch per posting,
+          // which triggers Cloudflare 403 on ~55% of WWR individual page requests.
+          // HTTP resolution via extractJobFromUrl is only used as a fallback when
+          // the RSS body is suspiciously short (< 500 chars = truncated snippet).
+          const rssContent: string = (item as any).content || item.contentSnippet || '';
+          let description = rssContent;
+          let company = item.creator || (item as any)['dc:creator'] || 'Unknown Company';
+          let location = 'Remote';
+
+          if (rssContent.length < 500) {
+            // Thin RSS body — attempt HTTP resolution for richer description
+            try {
+              const extracted = await extractJobFromUrl(postingUrl);
+              if (extracted.description_html && extracted.description_html.length > rssContent.length) {
+                description = extracted.description_html;
+                if (extracted.company && extracted.company !== 'Unknown Company') company = extracted.company;
+                if (extracted.location && extracted.location !== 'Unknown') location = extracted.location;
+              }
+            } catch {
+              // HTTP resolution failed — stick with RSS content
+            }
+          }
 
           allJobs.push({
-            title: item.title || extracted.title || 'Unknown Title',
-            company: item.creator || item['dc:creator'] || extracted.company || 'Unknown Company',
-            location: extracted.location || 'Remote',
-            description_html: extracted.description_html || item.contentSnippet || '',
+            title: item.title || 'Unknown Title',
+            company,
+            location,
+            description_html: description,
             apply_url: postingUrl,
             source: this.name,
           });

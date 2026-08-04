@@ -183,6 +183,19 @@ export default function OnboardingFlow() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ base64Pdf: base64Data })
         })
+
+        if (!res.ok) {
+          const status = res.status
+          setCvUploadState('error')
+          if (status === 413) {
+            setCvUploadError('File too large. Please use a PDF under 7MB.')
+          } else {
+            setCvUploadError(`Upload failed (HTTP ${status}). Please try again.`)
+          }
+          if (cvFileInputRef.current) cvFileInputRef.current.value = ''
+          return
+        }
+
         const data = await res.json()
 
         if (!data.isValid) {
@@ -236,6 +249,19 @@ export default function OnboardingFlow() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ base64Pdf: base64Data, mode: 'cover_letter' })
         })
+
+        if (!res.ok) {
+          const status = res.status
+          setClUploadState('error')
+          if (status === 413) {
+            setClUploadError('File too large. Please use a PDF under 7MB.')
+          } else {
+            setClUploadError(`Upload failed (HTTP ${status}). Please try again.`)
+          }
+          if (clFileInputRef.current) clFileInputRef.current.value = ''
+          return
+        }
+
         const data = await res.json()
 
         const extractedText = data.experienceSummary || data.rawText || ''
