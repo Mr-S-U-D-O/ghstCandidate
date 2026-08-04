@@ -347,18 +347,20 @@ ${memoriesText}
       console.log("[runAgent] Executing Stagehand act()...");
       const instruction = `
   You are an automated job application agent. 
-  1. If you are on a job description page, locate and click the "Apply", "Apply Now", or "Easy Apply" button to begin.
-  2. If you see application form fields, fill them out accurately using this candidate profile data:
-  
+  1. If you see application form fields, fill them out accurately using this candidate profile data:
 ${profileContext}
-
-  3. Use these specific memories for nuanced or custom questions: ${JSON.stringify(memories)}.
-  4. If there is a 'Next', 'Continue', or 'Submit Application' button, click it to advance to the next page.
-  5. CRITICAL: If you encounter a mandatory form question you cannot answer using the provided profile or memories, immediately stop and throw an error starting exactly with "NEEDS_INPUT: " followed by the question text.
-  6. CRITICAL SELF-HEALING REFLEX: If you click 'Submit' and the page does not transition, OR if you observe a red form validation error (e.g., 'Resume/CV is required', 'This field is required'), DO NOT click submit again immediately. You must observe the error, find the missing or incorrect field, and act to fix it (e.g., fill in the missing text). ONLY attempt to click 'Submit' again after attempting a fix. IF the error asks for a file you do not have, or information you do not know, THEN you must immediately STOP and throw a fatal error starting with 'NEEDS_INPUT:'.
-  7. EXHAUSTIVE EXECUTION RULE: You MUST scroll down and verify every single input field on the page. Do NOT click submit until you have actively verified there are no empty mandatory dropdowns, checkboxes, or textboxes remaining. You must proactively identify and fill EVERY single required input field before attempting to click the 'Submit' button. IF a required field asks a question that cannot be answered using the provided candidate profile context, you MUST immediately STOP and throw a fatal error starting exactly with 'NEEDS_INPUT: [Name of the specific missing field]'.
-  8. ANTI-SHORTCUT RULE: You are strictly FORBIDDEN from clicking any buttons that say 'Apply with LinkedIn', 'Apply with Indeed', 'Quick Apply with MyGreenhouse', 'Sign In', or any other third-party login or SSO shortcuts. You MUST stay on the current page and fill out the raw application form manually.
-  9. ANTI-LOOP & ANCHOR LINK RULE: On platforms like Greenhouse, the 'Apply' button at the top of the page is often just an anchor link that scrolls down. If you see application input fields (e.g., First Name, Last Name, Email, Resume Upload) anywhere in the DOM, you MUST prioritize filling them out immediately. DO NOT click 'Apply' or 'Apply Now' buttons if the form fields are already present on the page, or you will get trapped in an infinite click loop. Stop clicking anchors and start typing.
+  2. Use these specific memories for nuanced or custom questions: ${JSON.stringify(memories)}.
+  3. CRITICAL: If you encounter a mandatory form question you cannot answer using the provided profile or memories, immediately stop and throw an error starting exactly with "NEEDS_INPUT: " followed by the question text.
+  4. CRITICAL SELF-HEALING REFLEX: If you click 'Submit' and the page does not transition, OR if you observe a red form validation error (e.g., 'Resume/CV is required', 'This field is required'), DO NOT click submit again immediately. You must observe the error, find the missing or incorrect field, and act to fix it (e.g., fill in the missing text). ONLY attempt to click 'Submit' again after attempting a fix. IF the error asks for a file you do not have, or information you do not know, THEN you must immediately STOP and throw a fatal error starting with 'NEEDS_INPUT:'.
+  5. EXHAUSTIVE EXECUTION RULE: You MUST scroll down and verify every single input field on the page. Do NOT click submit until you have actively verified there are no empty mandatory dropdowns, checkboxes, or textboxes remaining. You must proactively identify and fill EVERY single required input field before attempting to click the 'Submit' button. IF a required field asks a question that cannot be answered using the provided candidate profile context, you MUST immediately STOP and throw a fatal error starting exactly with 'NEEDS_INPUT: [Name of the specific missing field]'.
+  
+  NAVIGATION & MODAL RULES:
+  6. AGGREGATOR GATEWAYS: If you land on an intermediary job board (e.g., Jobicy, WeWorkRemotely, RemoteOK), your primary goal is to find the link that routes to the employer's direct website. Click buttons like 'Apply for this job', 'Apply Now', or 'Continue on employer website'.
+  7. MODAL DISAMBIGUATION (GUEST OVERRIDE): If a modal or popup appears offering options like 'Sign Up and Apply', 'Log In', or 'Continue as Guest' / 'Apply without account', you MUST EXCLUSIVELY choose 'Continue as Guest' or 'Apply on Company Site'. NEVER select options that require creating an aggregator account.
+  8. REAL ATS TARGET RECOGNITION: Your navigation phase is COMPLETE when you land on an application form with actual candidate input fields (e.g. First Name, Email, Resume Upload) or an ATS domain (greenhouse.io, lever.co, ashbyhq.com, workable.com). Once on this page, transition immediately to filling out the form.
+  9. BACKTRACK PROTOCOL: If an action redirects you to an email verification, 2FA, or login screen, stop immediately. Do not attempt to log in.
+  10. ANTI-SHORTCUT RULE: You are strictly FORBIDDEN from clicking any buttons that say 'Apply with LinkedIn', 'Apply with Indeed', 'Quick Apply with MyGreenhouse', 'Sign In', or any other third-party login or SSO shortcuts. You MUST stay on the current page and fill out the raw application form manually.
+  11. ANTI-LOOP & ANCHOR LINK RULE: On platforms like Greenhouse, the 'Apply' button at the top of the page is often just an anchor link that scrolls down. If you see application input fields (e.g., First Name, Last Name, Email, Resume Upload) anywhere in the DOM, you MUST prioritize filling them out immediately. DO NOT click 'Apply' or 'Apply Now' buttons if the form fields are already present on the page, or you will get trapped in an infinite click loop. Stop clicking anchors and start typing.
       `.trim();
 
       try {
@@ -386,6 +388,20 @@ ${profileContext}
         console.log(
           `[runAgent] ✅ Stagehand act() completed iteration ${stepCount}.`,
         );
+
+        // 3.5 URL & Navigation State Tracking
+        const currentUrl = page.url();
+        const lowerUrl = currentUrl.toLowerCase();
+        
+        if (lowerUrl.includes('greenhouse.io') || lowerUrl.includes('lever.co') || lowerUrl.includes('ashbyhq.com') || lowerUrl.includes('workable.com')) {
+          console.log(`[runAgent] 🎯 Target ATS reached: ${currentUrl}`);
+        }
+
+        if (lowerUrl.includes('/login') || lowerUrl.includes('/signup') || lowerUrl.includes('/auth') || lowerUrl.includes('/signin')) {
+          console.warn(`[runAgent] ⚠️ Agent hit a login/auth wall at ${currentUrl}. Executing BACKTRACK PROTOCOL...`);
+          await page.goBack({ waitUntil: 'networkidle' }).catch((e: unknown) => console.warn("[runAgent] ⚠️ Backtrack failed:", e));
+          console.log(`[runAgent] 🔙 Backtracked to: ${page.url()}`);
+        }
 
         if (actResult && actResult.success === false) {
           const failureMsg = `Agent paralyzed: ${actResult.message || 'Unknown failure'}`;

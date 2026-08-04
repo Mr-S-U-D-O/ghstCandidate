@@ -75,35 +75,14 @@ export async function ingestFeeds(): Promise<IngestedJob[]> {
     }
   }
 
-  // Zero-Shot Local Filter
-  const filteredJobs = allJobs.filter(job => {
-    const textToSearch = (job.title + ' ' + job.description_html).toLowerCase();
-    const locToSearch = (job.location).toLowerCase();
-    
-    // Check exclusion
-    if (textToSearch.includes('us only') || locToSearch.includes('us only')) {
-      return false;
-    }
-
-    // Check keywords
-    const keywords = ['frontend', 'web developer', 'react', 'junior', 'ui/ux'];
-    const hasKeyword = keywords.some(kw => textToSearch.includes(kw));
-
-    // Check location
-    const locations = ['remote', 'worldwide', 'johannesburg', 'south africa', 'anywhere'];
-    const hasLocation = locations.some(loc => locToSearch.includes(loc));
-
-    return hasKeyword && hasLocation;
-  });
-
   // Deduplicate by apply_url
   const seen = new Set<string>();
-  const unique = filteredJobs.filter(job => {
+  const unique = allJobs.filter(job => {
     if (!job.apply_url || seen.has(job.apply_url)) return false;
     seen.add(job.apply_url);
     return true;
   });
 
-  console.log(`[Harvester] Ingested ${unique.length} unique filtered jobs.`);
+  console.log(`[Harvester] Ingested ${unique.length} unique jobs.`);
   return unique;
 }

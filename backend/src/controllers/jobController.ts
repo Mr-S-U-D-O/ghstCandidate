@@ -4,6 +4,7 @@ import { chromium, BrowserContext } from "playwright"
 import { supabase } from "../supabaseClient.js"
 import { createClient } from "@supabase/supabase-js"
 import { harvestAllSources } from "../utils/jobAdapter.js"
+import { ingestFeeds } from "../utils/cron/harvester.js"
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -668,13 +669,19 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
 
     const trackedUrls = new Set(existingJobs?.map(j => j.source_url) || [])
 
-    // Step 2: Check the Data Lake (Fuzzy Search)
-    console.log(`[huntJobs] Querying Data Lake for '${searchRole}' in '${location}'...`)
+    // Step 2: Tokenize the Wide Net Queries
+    const roleTokens = searchRole.split(/\s+/).filter((t: string) => t.length > 2)
+    if (roleTokens.length === 0) roleTokens.push(searchRole)
+    const titleOrQuery = roleTokens.map((token: string) => `title.ilike.%${token}%`).join(',')
+    
+    const locationOrQuery = `location.ilike.%${location}%,location.ilike.%remote%,location.ilike.%anywhere%,location.ilike.%worldwide%`
+
+    console.log(`[huntJobs] Querying Data Lake with Wide Net strategy...`)
     const { data: candidateGlobalJobs, error: globalError } = await scopedSupabase
       .from('global_jobs')
       .select('*')
-      .ilike('title', `%${searchRole}%`)
-      .ilike('location', `%${location}%`)
+      .or(titleOrQuery)
+      .or(locationOrQuery)
       .limit(50)
 
     if (globalError) {
@@ -686,47 +693,81 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
 
     // Data Lake is the sole source of truth (populated by background harvester)
     if (unEvaluatedJobs.length === 0) {
-      console.log(`[huntJobs] No matching jobs found in the Data Lake for this search.`)
+      console.log(`[huntJobs] ⚠️ Data Lake empty for criteria. Triggering live on-demand feed ingestion...`)
+      const freshJobs = await ingestFeeds();
+      const mappedGlobalJobs = freshJobs.map(j => ({
+        title: j.title,
+        company: j.company,
+        location: j.location,
+        description: j.description_html,
+        apply_url: j.apply_url,
+        api_source: j.source
+      }))
+      
+      // Upsert into Data Lake
+      const { error: upsertError } = await supabase
+        .from('global_jobs')
+        .upsert(mappedGlobalJobs, { onConflict: 'apply_url', ignoreDuplicates: true });
+        
+      if (upsertError) {
+        console.error(`❌ [huntJobs] Fallback upsert failed:`, upsertError.message)
+      }
+        
+      // Re-run the query against global_jobs
+      const { data: retryCandidateGlobalJobs } = await scopedSupabase
+        .from('global_jobs')
+        .select('*')
+        .or(titleOrQuery)
+        .or(locationOrQuery)
+        .limit(50)
+      
+      unEvaluatedJobs = (retryCandidateGlobalJobs || []).filter(job => !trackedUrls.has(job.apply_url))
+      console.log(`[huntJobs] Data Lake (Live Fallback) returned ${unEvaluatedJobs.length} un-evaluated jobs.`)
     }
 
-    // Step 4: Take the top 5 jobs
-    unEvaluatedJobs = unEvaluatedJobs.slice(0, 5)
-    console.log(`[huntJobs] Proceeding to queue ${unEvaluatedJobs.length} jobs to user board (State A).`)
+    console.log(`[huntJobs] Proceeding to evaluate ${unEvaluatedJobs.length} jobs with Wide Net strategy.`)
 
-    // Step 5: Insert into Kanban (State A: Unanalyzed)
+    // Step 5: Pre-Evaluation Engine & Board Queueing
     const evaluatedJobs = []
     for (const job of unEvaluatedJobs) {
-      console.log(`[huntJobs] Queuing: ${job.title} at ${job.company}`)
+      console.log(`[huntJobs] Pre-evaluating: ${job.title} at ${job.company}`)
       try {
-        const kanbanJob = {
-          user_id: userId,
-          company: 'Unknown Company',
-          title: job.title,
-          location: job.location,
-          source_url: job.apply_url,
-          match_score: 0,
-          verdict: null,
-          matches_found: null,
-          missing_or_weak: null,
-          human_input_required: null,
-          column: 'discovered',
-          needs_input: false
-        }
+        const jobDesc = job.description || job.description_html || '';
+        const parsed = await analyzeJobText(jobDesc, candidateProfile, job.apply_url, []);
+        
+        if (parsed.matchScore >= 40) {
+          const kanbanJob = {
+            user_id: userId,
+            company: parsed.company || job.company || 'Unknown Company',
+            title: parsed.role || job.title,
+            location: job.location,
+            source_url: job.apply_url,
+            match_score: parsed.matchScore,
+            verdict: parsed.verdict,
+            matches_found: parsed.matchesFound,
+            missing_or_weak: parsed.missingOrWeak,
+            human_input_required: parsed.humanInputRequired,
+            column: 'discovered',
+            needs_input: false
+          }
 
-        const { data: insertedJob, error: insertError } = await scopedSupabase
-          .from('jobs')
-          .insert(kanbanJob)
-          .select()
-          .single()
+          const { data: insertedJob, error: insertError } = await scopedSupabase
+            .from('jobs')
+            .insert(kanbanJob)
+            .select()
+            .single()
 
-        if (insertError) {
-          console.error(`❌ [huntJobs] Failed to insert job into Kanban:`, insertError)
-        } else if (insertedJob) {
-          console.log(`✅ [huntJobs] Queued job into Kanban: ${insertedJob.title} at ${insertedJob.company}`)
-          evaluatedJobs.push(insertedJob)
+          if (insertError) {
+            console.error(`❌ [huntJobs] Failed to insert job into Kanban:`, insertError)
+          } else if (insertedJob) {
+            console.log(`✅ [huntJobs] Queued qualified job into Kanban: ${insertedJob.title} at ${insertedJob.company} (Score: ${parsed.matchScore})`)
+            evaluatedJobs.push(insertedJob)
+          }
+        } else {
+          console.log(`[huntJobs] Skipped job (Score ${parsed.matchScore} < 40): ${job.title} at ${job.company}`)
         }
       } catch (e) {
-        console.error(`❌ [huntJobs] Failed to queue job ${job.apply_url}:`, e)
+        console.error(`❌ [huntJobs] Failed to queue/evaluate job ${job.apply_url}:`, e)
       }
     }
 
