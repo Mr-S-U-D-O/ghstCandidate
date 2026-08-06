@@ -23,3 +23,6 @@ test-results/
 
 backend/.env
 *.env
+
+# ── Marketing & Strategy ────────────────────────────────────
+strategy/
