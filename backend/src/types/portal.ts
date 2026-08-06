@@ -15,14 +15,3 @@ export interface IngestedJob {
   source: string;
 }
 
-/**
- * The interface every skill provider must implement.
- * Each file in `backend/src/skills/providers/` exports a class or
- * object that satisfies this contract.
- */
-export interface JobPortalProvider {
-  /** Human-readable name for logging */
-  name: string;
-  /** Fetch and normalize jobs from this provider's source */
-  fetchJobs(): Promise<IngestedJob[]>;
-}

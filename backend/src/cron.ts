@@ -70,19 +70,19 @@ export function initCron() {
     console.log("[Cron/Sweeper] 🧹 Starting daily stale job purge...")
 
     try {
-      // RFC Section 5: 14-day TTL (was previously 30 days)
-      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+      // RFC Section 5: 30-day TTL
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
       const { data, error } = await supabase
         .from('global_jobs')
         .delete()
-        .lt('created_at', fourteenDaysAgo)
+        .lt('created_at', thirtyDaysAgo)
         .select('id')
 
       if (error) {
         console.error("[Cron/Sweeper] ❌ Delete error:", error.message)
       } else {
-        console.log(`[Cron/Sweeper] ✅ Purged ${data?.length || 0} stale jobs (older than 14 days).`)
+        console.log(`[Cron/Sweeper] ✅ Purged ${data?.length || 0} stale jobs (older than 30 days).`)
       }
     } catch (e) {
       console.error("[Cron/Sweeper] ❌ Unhandled error in sweeper:", e)

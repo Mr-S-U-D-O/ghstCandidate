@@ -5,6 +5,7 @@ import { supabase } from "../supabaseClient.js"
 import { createClient } from "@supabase/supabase-js"
 import { ingestFeeds } from "../utils/cron/harvester.js"
 import { extractJobFromUrl } from "../utils/jsonLdExtractor.js"
+import { generateCompletion } from "../utils/ai.js"
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -32,22 +33,6 @@ export interface JobAnalysisResult {
   matchesFound: string[]
   missingOrWeak: string[]
   humanInputRequired: string[]
-}
-
-// ── NVIDIA Client (lazy singleton) ────────────────────────────────
-
-let _openai: OpenAI | null = null
-
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    const key = process.env.NVIDIA_API_KEY
-    if (!key) throw new Error("NVIDIA_API_KEY is not set in environment variables.")
-    _openai = new OpenAI({
-      apiKey: key,
-      baseURL: "https://integrate.api.nvidia.com/v1"
-    })
-  }
-  return _openai
 }
 
 // ── JSON Sanitization Helper ──────────────────────────────────────
@@ -191,55 +176,30 @@ CRITICAL REQUIREMENT: You MUST respond ONLY with a single valid JSON object. Do 
 ${JSON.stringify(RESPONSE_SCHEMA, null, 2)}
 `.trim()
 
-  // Step 3: Call OpenAI (NVIDIA DeepSeek)
-  const openai = getOpenAI()
-
-  console.log(`[analyzeJobText] Triggering NVIDIA DeepSeek V4 Model. Prompt length: ${prompt.length} chars.`)
+  // Step 3: Call AI Provider via robust wrapper
+  console.log(`[analyzeJobText] Triggering AI Provider. Prompt length: ${prompt.length} chars.`)
   
-  let completion;
-  let attempts = 0;
-  while (attempts < 3) {
-    attempts++;
-    try {
-      completion = await openai.chat.completions.create({
-        model: "deepseek-ai/deepseek-v4-flash",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 16384,
-        // @ts-ignore - NVIDIA specific kwarg for DeepSeek reasoning
-        chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
-        response_format: { type: "json_object" }
-      })
-      break;
-    } catch (err: any) {
-      if (err.status === 529 || err.status === 429) {
-        if (attempts < 3) {
-          const delay = attempts === 1 ? 5000 : 10000;
-          console.warn(`[analyzeJobText] ⚠️ Upstream AI provider overloaded (${err.status}). Retrying in ${delay}ms (Attempt ${attempts}/3)...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        console.warn(`[analyzeJobText] ❌ Upstream AI provider overloaded (${err.status}) after 3 attempts. Returning graceful fallback.`);
-        return {
-          company: "Unknown (AI Overloaded)",
-          role: "Unknown",
-          matchScore: 0,
-          verdict: "The AI provider is currently overloaded and could not analyze this job.",
-          matchesFound: [],
-          missingOrWeak: [],
-          humanInputRequired: []
-        }
-      }
-      throw err;
+  let rawText = ""
+  try {
+    rawText = await generateCompletion({
+      prompt: prompt,
+      maxTokens: 4000,
+      jsonMode: true
+    })
+  } catch (err: any) {
+    console.warn(`[analyzeJobText] ❌ AI provider failed after fallbacks: ${err.message}. Returning graceful fallback.`);
+    return {
+      company: "Unknown (AI Overloaded)",
+      role: "Unknown",
+      matchScore: 0,
+      verdict: "The AI provider is currently overloaded and could not analyze this job.",
+      matchesFound: [],
+      missingOrWeak: [],
+      humanInputRequired: []
     }
   }
 
-  const msg = completion!.choices[0]?.message as any
-  if (msg?.reasoning_content) {
-    console.log(`[analyzeJobText] DeepSeek Reasoning: ${msg.reasoning_content.slice(0, 150).replace(/\\n/g, ' ')}...`)
-  }
-
-  let rawText = (msg?.content || "").trim()
-  console.log(`[analyzeJobText] NVIDIA responded with ${rawText.length} characters.`)
+  console.log(`[analyzeJobText] AI responded with ${rawText.length} characters.`)
 
   // Parse with stutter repair and double-encoding protection
   let parsed: JobAnalysisResult
@@ -385,63 +345,36 @@ Original Cover Letter Style Reference: ${(candidateProfile.rawCoverLetterText ||
 Job Description: ${jdText.slice(0, 5000)}
 
 Generate a highly tailored Resume and a Cover Letter for this specific job.
-The cover letter MUST mirror the tone, voice, and structure of the Original Cover Letter Style Reference above.
+The cover letter MUST mirror the tone, voice, and structure of the Original Cover Letter Style Reference above. Keep the cover letter concise, exactly 3 paragraphs.
 
 Return a JSON object with FOUR keys:
 1. "resumeHtml" - full A4-ready HTML for the resume
 2. "coverLetterHtml" - full A4-ready HTML for the cover letter
-3. "changes_made" - a 2-4 sentence plain English summary of the key changes made vs the original documents (which skills/experience were foregrounded, what was removed or deprioritised)
-4. "reasoning" - a 2-3 sentence explanation of WHY these specific changes improve the candidate's chances for this particular role, referencing specific requirements from the JD and candidate skills that match them
+3. "changes_made" - a brief 2 sentence summary of key changes made
+4. "reasoning" - a brief 2 sentence explanation of WHY these changes improve chances
 
 STRICT STYLING REQUIREMENTS FOR HTML:
 - Minimalist, achromatic color palette (black, white, grays).
 - Whitespace dominant (high padding/margins).
-- No gradients, no emojis.
 - Headings MUST use 'Comfortaa' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap" rel="stylesheet">).
 - Body text MUST use 'Lato' font via Google Fonts (<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">).
 - Use inline styles or a <style> block.
 
-CRITICAL REQUIREMENT: You MUST respond ONLY with a single valid JSON object. Do not include markdown formatting, thought preambles, or unclosed syntax.
+CRITICAL REQUIREMENT: Return ONLY valid JSON. Do not include markdown formatting.
 `.trim()
 
-  const openai = getOpenAI()
-
-  console.log(`[generateBespokeDocs] Calling NVIDIA DeepSeek model...`)
-  let docCompletion;
-  let attempts = 0;
-  while (attempts < 3) {
-    attempts++;
-    try {
-      docCompletion = await openai.chat.completions.create({
-        model: "deepseek-ai/deepseek-v4-flash",
-        messages: [{ role: "user", content: docGenPrompt }],
-        max_tokens: 16384,
-        // @ts-ignore
-        chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
-        response_format: { type: "json_object" }
-      })
-      break;
-    } catch (err: any) {
-      if (err.status === 529 || err.status === 429) {
-        if (attempts < 3) {
-          const delay = attempts === 1 ? 5000 : 10000;
-          console.warn(`[generateBespokeDocs] ⚠️ Upstream AI provider overloaded (${err.status}). Retrying in ${delay}ms (Attempt ${attempts}/3)...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        console.warn(`[generateBespokeDocs] ❌ Upstream AI provider overloaded (${err.status}) after 3 attempts. Throwing AI_PROVIDER_OVERLOADED.`);
-        throw new Error("AI_PROVIDER_OVERLOADED");
-      }
-      throw err;
-    }
+  console.log(`[generateBespokeDocs] Calling AI Provider...`)
+  let rawDocText = "{}"
+  try {
+    rawDocText = await generateCompletion({
+      prompt: docGenPrompt,
+      maxTokens: 4000,
+      jsonMode: true
+    })
+  } catch (err: any) {
+    console.warn(`[generateBespokeDocs] ❌ Upstream AI provider overloaded or failed after 3 attempts. Throwing AI_PROVIDER_OVERLOADED. Error: ${err.message}`);
+    throw new Error("AI_PROVIDER_OVERLOADED");
   }
-
-  const docMsg = docCompletion!.choices[0]?.message as any
-  if (docMsg?.reasoning_content) {
-    console.log(`[generateBespokeDocs] DeepSeek Reasoning: ${docMsg.reasoning_content.slice(0, 150).replace(/\\n/g, ' ')}...`)
-  }
-
-  let rawDocText = (docMsg?.content || "{}").trim()
   
   // Parse with stutter repair and double-encoding protection
   let docs;
@@ -679,11 +612,13 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
     const trackedUrls = new Set(existingJobs?.map(j => j.source_url) || [])
 
     // Step 2: Tokenize the Wide Net Queries
-    const roleTokens = searchRole.split(/\s+/).filter((t: string) => t.length > 2)
+    const roleTokens = searchRole.split(/[\s,]+/).filter((t: string) => t.length > 2)
     if (roleTokens.length === 0) roleTokens.push(searchRole)
-    const titleOrQuery = roleTokens.map((token: string) => `title.ilike.%${token}%`).join(',')
+    const titleOrQuery = roleTokens.map((token: string) => `title.ilike."%${token.replace(/"/g, '')}%"`).join(',')
     
-    const locationOrQuery = `location.ilike.%${location}%,location.ilike.%remote%,location.ilike.%anywhere%,location.ilike.%worldwide%`
+    // Extract just the city to make the Wide Net better and avoid comma syntax errors
+    const baseLocation = location.split(',')[0].trim().replace(/"/g, '')
+    const locationOrQuery = `location.ilike."%${baseLocation}%",location.ilike."%remote%",location.ilike."%anywhere%",location.ilike."%worldwide%"`
 
     console.log(`[huntJobs] Querying Data Lake with Wide Net strategy...`)
     const { data: candidateGlobalJobs, error: globalError } = await scopedSupabase

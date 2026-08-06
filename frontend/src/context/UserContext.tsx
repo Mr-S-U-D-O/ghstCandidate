@@ -29,6 +29,7 @@ export interface CandidateProfile {
   work_environment?: string
   willing_to_travel?: string
   willing_to_relocate?: boolean
+  is_admin?: boolean
   [key: string]: any
 }
 
@@ -113,6 +114,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         work_environment: rest.work_environment || '',
         willing_to_travel: rest.willing_to_travel || '',
         willing_to_relocate: rest.willing_to_relocate,
+        is_admin: rest.is_admin || false,
         ...(extra_data || {})
       })
       setHasProfile(true)

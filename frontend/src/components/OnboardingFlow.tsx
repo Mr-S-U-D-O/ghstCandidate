@@ -36,11 +36,12 @@ interface UploadCardProps {
   state: 'idle' | 'uploading' | 'done' | 'error'
   error?: string
   label: string
+  loadingText?: string
   icon: React.ReactNode
   onClickUpload: () => void
 }
 
-const UploadCard = ({ state, error, label, icon, onClickUpload }: UploadCardProps) => (
+const UploadCard = ({ state, error, label, loadingText, icon, onClickUpload }: UploadCardProps) => (
   <div
     onClick={onClickUpload}
     className={`w-full max-w-md h-48 md:h-64 flex flex-col items-center justify-center p-6 text-center border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
@@ -64,7 +65,7 @@ const UploadCard = ({ state, error, label, icon, onClickUpload }: UploadCardProp
     {state === 'uploading' && (
       <>
         <Loader2 size={40} className="text-orange-500 animate-spin mb-4" />
-        <p className="font-sans text-base font-medium text-orange-600">Ghost is analyzing your resume...</p>
+        <p className="font-sans text-base font-medium text-orange-600">{loadingText || 'Ghost is analyzing your resume...'}</p>
       </>
     )}
     {state === 'done' && (
@@ -166,6 +167,29 @@ export default function OnboardingFlow() {
   const [clUploadState, setClUploadState] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [clUploadError, setClUploadError] = useState('')
   const clFileInputRef = useRef<HTMLInputElement>(null)
+
+  const [cvLoadingText, setCvLoadingText] = useState('Extracting Text...')
+
+  // Cycle loading text every 3.5s when uploading CV
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>
+    if (cvUploadState === 'uploading') {
+      const states = [
+        "Extracting Text...",
+        "Evaluating Profile...",
+        "Structuring Data..."
+      ];
+      let i = 0;
+      setCvLoadingText(states[0]);
+      interval = setInterval(() => {
+        i = (i + 1) % states.length;
+        setCvLoadingText(states[i]);
+      }, 3500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [cvUploadState])
 
   const handleCvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -495,6 +519,7 @@ export default function OnboardingFlow() {
           state={cvUploadState}
           error={cvUploadError}
           label="Drop your CV PDF here, or click to browse."
+          loadingText={cvLoadingText}
           icon={<UploadCloud size={48} strokeWidth={1.5} />}
           onClickUpload={() => { if (cvUploadState !== 'uploading') cvFileInputRef.current?.click() }}
         />

@@ -4,6 +4,7 @@ import AuthPage from './components/AuthPage'
 import WaitlistPage from './components/WaitlistPage'
 import OnboardingFlow from './components/OnboardingFlow'
 import Dashboard from './components/Dashboard'
+import AdminDashboard from './pages/admin/AdminDashboard'
 import { UserProvider, useUser } from './context/UserContext'
 
 // ── Auth Guard ────────────────────────────────────────────────────
@@ -40,6 +41,25 @@ function AuthGuard({ children, requireProfile = false, blockIfProfile = false }:
   return <>{children}</>
 }
 
+// ── Admin Guard ───────────────────────────────────────────────────
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoadingAuth, candidateProfile } = useUser()
+
+  if (isLoadingAuth) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (!user || !candidateProfile.is_admin) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <>{children}</>
+}
+
 // ── App ───────────────────────────────────────────────────────────
 
 function AppRoutes() {
@@ -64,6 +84,12 @@ function AppRoutes() {
           <OnboardingFlow />
         </AuthGuard>
       } />
+      <Route path="/admin" element={
+        <AdminGuard>
+          <AdminDashboard />
+        </AdminGuard>
+      } />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { X, FileText, Check, AlertTriangle, MapPin, Clock, ExternalLink, Loader2 } from "lucide-react"
 import type { Job } from "./Dashboard"
 import { UserContext } from "../context/UserContext"
@@ -23,20 +23,20 @@ interface MatchReportPanelProps {
 function MatchBadgeLarge({ score }: { score: number }) {
   if (score >= 85) {
     return (
-      <span className="inline-flex items-center px-3 py-1.5 rounded-sm text-sm font-medium font-sans bg-green-50 text-green-800 border border-green-100">
+      <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold font-sans bg-[#0A0A0A] text-white shadow-sm ring-1 ring-black/5 inset-ring">
         {score}% Match
       </span>
     )
   }
   if (score >= 70) {
     return (
-      <span className="inline-flex items-center px-3 py-1.5 rounded-sm text-sm font-medium font-sans bg-amber-50 text-amber-700 border border-amber-100">
-        {score}% — Needs Input
+      <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold font-sans bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
+        {score}% Match
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center px-3 py-1.5 rounded-sm text-sm font-medium font-sans bg-gray-100 text-gray-500 border border-gray-200">
+    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold font-sans bg-gray-50 text-gray-500 border border-gray-200 shadow-sm">
       {score}% Match
     </span>
   )
@@ -54,6 +54,29 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
   const [jitAnswer, setJitAnswer] = useState('')
   const [isSavingAnswer, setIsSavingAnswer] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
+  const [loadingText, setLoadingText] = useState('Analyzing Profile...')
+
+  // Cycle loading text every 3.5s when applying
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isApplying) {
+      const states = [
+        "Analyzing Profile...",
+        "Drafting Cover Letter...",
+        "Preparing Resume...",
+        "Submitting to ATS..."
+      ];
+      let i = 0;
+      setLoadingText(states[0]);
+      interval = setInterval(() => {
+        i = (i + 1) % states.length;
+        setLoadingText(states[i]);
+      }, 3500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isApplying]);
 
   const handleRetryAnalysis = async () => {
     if (!job || !job.sourceUrl) return
@@ -230,9 +253,9 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
       <div
         className="fixed top-0 right-0 h-screen w-full md:w-[600px] max-w-full bg-white z-50 flex flex-col"
         style={{
-          boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
+          boxShadow: "var(--shadow-float)",
           transform: isOpen ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
+          transition: "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
         }}
       >
         {job && (
@@ -385,14 +408,14 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
                     onChange={(e) => setJitAnswer(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitAnswer() }}
                     placeholder="Type your answer here..."
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-sm font-sans text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 hover:border-gray-300 rounded-xl font-sans text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm placeholder:text-gray-300"
                   />
                   <button
                     onClick={handleSubmitAnswer}
                     disabled={isSavingAnswer || !jitAnswer.trim()}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-b from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-sans font-bold text-sm rounded-xl disabled:opacity-50 shadow-[0_2px_10px_rgba(249,115,22,0.2)] hover:shadow-[0_4px_14px_rgba(249,115,22,0.3)] ring-1 ring-white/20 inset-ring transition-all"
                   >
-                    {isSavingAnswer ? <><Loader2 size={14} className="animate-spin" /> Saving & Resuming Agent...</> : 'Submit Answer & Resume Agent'}
+                    {isSavingAnswer ? <><Loader2 size={16} className="animate-spin" /> Saving & Resuming Agent...</> : 'Submit Answer & Resume Agent'}
                   </button>
                 </div>
               )}
@@ -403,16 +426,16 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
               {/* Standard footer actions */}
               {!needsInputQuestion && !requiresLogin && (
                 <div className="flex items-center justify-between gap-3">
-                  <button onClick={handleReject} disabled={isApplying || isRetrying} className="px-5 py-2.5 bg-white text-gray-600 font-sans font-medium text-sm rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50">
+                  <button onClick={handleReject} disabled={isApplying || isRetrying} className="px-5 py-3 bg-white text-gray-500 font-sans font-bold text-sm rounded-xl border border-gray-200 hover:border-gray-300 hover:text-gray-800 transition-colors disabled:opacity-50 shadow-sm">
                     Reject Job
                   </button>
                   {job.verdict?.includes("Retry Analysis") ? (
-                    <button onClick={handleRetryAnalysis} disabled={isRetrying} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50">
-                      {isRetrying ? <><Loader2 size={14} className="animate-spin" /> Retrying...</> : 'Retry Analysis'}
+                    <button onClick={handleRetryAnalysis} disabled={isRetrying} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-b from-gray-800 to-[#0A0A0A] hover:from-gray-700 hover:to-gray-900 text-white font-sans font-bold text-sm rounded-xl disabled:opacity-50 shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)] ring-1 ring-white/10 inset-ring transition-all">
+                      {isRetrying ? <><Loader2 size={16} className="animate-spin" /> Retrying...</> : 'Retry Analysis'}
                     </button>
                   ) : (
-                    <button onClick={handleApprove} disabled={isApplying} className="flex items-center gap-2 px-6 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50">
-                      {isApplying ? <><Loader2 size={14} className="animate-spin" /> Ghost is running...</> : 'Generate Documents & Apply'}
+                    <button onClick={handleApprove} disabled={isApplying} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-b from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-sans font-bold text-sm rounded-xl disabled:opacity-50 shadow-[0_2px_10px_rgba(249,115,22,0.2)] hover:shadow-[0_4px_14px_rgba(249,115,22,0.3)] ring-1 ring-white/20 inset-ring transition-all">
+                      {isApplying ? <><Loader2 size={16} className="animate-spin" /> {loadingText}</> : 'Generate Documents & Apply'}
                     </button>
                   )}
                 </div>

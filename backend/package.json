@@ -16,6 +16,7 @@
     "@browserbasehq/stagehand": "^3.7.1",
     "@supabase/supabase-js": "^2.110.8",
     "@types/cors": "^2.8.19",
+    "apify-client": "^2.24.0",
     "axios": "^1.19.0",
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",

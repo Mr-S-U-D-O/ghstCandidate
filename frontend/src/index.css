@@ -40,6 +40,12 @@
   /* Typography */
   --font-sans:    'Lato', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Comfortaa', ui-sans-serif, system-ui, sans-serif;
+
+  /* Premium UI Tokens */
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-float: 0 12px 30px -4px rgba(0, 0, 0, 0.08);
+  --transition-spring: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-smooth: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 /* --- Reset & Base ------------------------------------------ */
@@ -108,3 +114,11 @@ input:-webkit-autofill:active {
     -webkit-text-fill-color: black !important;
     transition: background-color 5000s ease-in-out 0s;
 }
+
+/* --- Premium Utilities ------------------------------------- */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+

@@ -1,20 +1,7 @@
 import { Request, Response } from "express"
-import OpenAI from "openai"
 import { createClient } from "@supabase/supabase-js"
-import { supabase } from "../supabaseClient"
-
-let _openai: OpenAI | null = null
-function getOpenAI() {
-  if (!_openai) {
-    if (!process.env.NVIDIA_API_KEY) throw new Error("Missing NVIDIA_API_KEY")
-    _openai = new OpenAI({
-      apiKey: process.env.NVIDIA_API_KEY,
-      baseURL: "https://integrate.api.nvidia.com/v1"
-    })
-  }
-  return _openai
-}
-
+import { supabase } from "../supabaseClient.js"
+import { generateCompletion } from "../utils/ai.js"
 export async function chatProfiler(req: Request, res: Response): Promise<void> {
   try {
     const { currentProfile, userMessage, chatHistory } = req.body
@@ -45,19 +32,19 @@ User Message:
 ${userMessage}
 `.trim()
 
-    const openai = getOpenAI()
-    const completion = await openai.chat.completions.create({
-      model: "deepseek-ai/deepseek-v4-flash",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 16384,
-      // @ts-ignore
-      chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
-      response_format: { type: "json_object" }
+    const rawText = await generateCompletion({
+      prompt: prompt,
+      maxTokens: 2000,
+      jsonMode: true
     })
-
-    let rawText = completion.choices[0]?.message?.content || "{}"
-    rawText = rawText.trim().replace(/^```json/, '').replace(/```$/, '').trim()
-    const parsed = JSON.parse(rawText)
+    
+    let parsed: any = {}
+    try {
+      parsed = JSON.parse(rawText)
+    } catch(e) {
+      console.error("[chatProfiler] Failed to parse JSON:", e)
+      throw new Error("Failed to parse JSON response from AI")
+    }
 
     console.log(`[chatProfiler] ✅ Gemini responded. Profile updates:`, Object.keys(parsed.profileUpdates || {}).length > 0 ? parsed.profileUpdates : 'None')
 

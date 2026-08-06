@@ -1,18 +1,6 @@
 import { Request, Response } from "express"
-import OpenAI from "openai"
 import pdfParse from "pdf-parse"
-
-let _openai: OpenAI | null = null
-function getOpenAI() {
-  if (!_openai) {
-    if (!process.env.NVIDIA_API_KEY) throw new Error("Missing NVIDIA_API_KEY")
-    _openai = new OpenAI({
-      apiKey: process.env.NVIDIA_API_KEY,
-      baseURL: "https://integrate.api.nvidia.com/v1"
-    })
-  }
-  return _openai
-}
+import { generateCompletion } from "../utils/ai.js"
 
 export async function parseCv(req: Request, res: Response): Promise<void> {
   try {
@@ -48,22 +36,18 @@ export async function parseCv(req: Request, res: Response): Promise<void> {
 
     console.log(`[parseCv] Extracted ${pdfText.length} characters from PDF. Sending to LLM...`)
 
-    const openai = getOpenAI()
-
-    let prompt = ""
+    let systemPrompt = ""
     if (mode === "cover_letter") {
-      prompt = `
-You are an ATS parser. Extract data from this document text.
+      systemPrompt = `
+You are an ATS parser. Return ONLY JSON. Do not include summaries, conversational text, or null fields.
 Step 1: Validate if it is a Cover Letter. If it is NOT, return { "isValid": false }.
-Step 2: If it IS a Cover Letter, return { "isValid": true } and extract the full comprehensive text of the letter into the 'rawText' field. Provide a highly accurate, verbatim transcription or comprehensive summary of the text to prevent data loss.
-
-IMPORTANT: You MUST return ONLY valid JSON. Do not wrap it in markdown \`\`\`json blocks.
+Step 2: If it IS a Cover Letter, return { "isValid": true } and extract the full comprehensive text of the letter into the 'rawText' field.
 `.trim()
     } else {
-      prompt = `
-You are an ATS parser. Extract data from this document text.
+      systemPrompt = `
+You are an ATS parser. Return ONLY JSON. Do not include summaries, conversational text, or null fields.
 Step 1: Validate if it is a CV/Resume. If it is NOT, return { "isValid": false }.
-Step 2: If it IS a CV, extract the data and return strict JSON matching this structure exactly (ensure all these keys exist):
+Step 2: If it IS a CV, extract the data and return strict JSON matching this structure exactly:
 - isValid (boolean)
 - name (string)
 - email (string)
@@ -76,51 +60,26 @@ Step 2: If it IS a CV, extract the data and return strict JSON matching this str
 - years_of_experience (number)
 - linkedin_url (string)
 - portfolio_url (string)
-- rawText (string)
-
-- For 'locations', extract any locations they mention.
-- For 'targetRoles', infer their target roles based on their recent experience or summary.
-- For 'rawText', provide a highly accurate comprehensive text summary or transcription of the entire document.
-- Ensure 'years_of_experience' is a number.
-
-IMPORTANT: You MUST return ONLY valid JSON. Do not wrap it in markdown \`\`\`json blocks.
+- rawText (string) - highly accurate comprehensive text summary of the entire document.
 `.trim()
     }
 
-    prompt += "\n\nDocument Text:\n" + pdfText
+    const prompt = "\n\nDocument Text:\n" + pdfText
 
-    let completion: any = null
-    let attempts = 0
-    while (attempts < 3) {
-      try {
-        completion = await openai.chat.completions.create({
-          model: "deepseek-ai/deepseek-v4-flash",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 8192,
-          // @ts-ignore
-          chat_template_kwargs: { "thinking": true, "reasoning_effort": "high" },
-          response_format: { type: "json_object" }
-        })
-        break
-      } catch (err: any) {
-        attempts++
-        if (err?.status === 529 || err?.status === 429 || err?.status >= 500) {
-          console.log(`[parseCv] LLM API returned ${err?.status}. Retrying (${attempts}/3)...`)
-          if (attempts >= 3) throw err
-          await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempts - 1))) // 2s, 4s backoff
-        } else {
-          throw err
-        }
-      }
+    const rawText = await generateCompletion({
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      maxTokens: 2000,
+      jsonMode: true
+    })
+    
+    let parsed
+    try {
+      parsed = JSON.parse(rawText)
+    } catch (e) {
+      console.error("[parseCv] Failed to parse JSON. Raw text was:", rawText.substring(0, 500) + '...')
+      throw new Error("AI returned malformed JSON.")
     }
-
-    if (!completion) {
-      throw new Error("Failed to get completion from LLM")
-    }
-
-    let rawText = completion.choices[0]?.message?.content || "{}"
-    rawText = rawText.trim().replace(/^```json/, '').replace(/```$/, '').trim()
-    const parsed = JSON.parse(rawText)
 
     if (parsed.isValid) {
       console.log(`[parseCv] Successfully parsed document for: ${parsed.name || 'User'}`)

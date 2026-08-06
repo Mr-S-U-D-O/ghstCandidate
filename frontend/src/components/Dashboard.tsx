@@ -73,27 +73,28 @@ const TECH_ROLES = [
 function MatchBadge({ score, needsInput, missingField }: { score: number; needsInput?: boolean; missingField?: string }) {
   if (needsInput && missingField) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium font-sans bg-amber-50 text-amber-700 border border-amber-200">
-        ⚠ Needs Input: {missingField}
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-sans bg-gray-100 text-gray-700 border border-gray-200 shadow-sm">
+        <AlertCircle size={12} strokeWidth={2.5} />
+        Needs Input
       </span>
     )
   }
   if (score >= 85) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium font-sans bg-green-50 text-green-800 border border-green-100">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-sans bg-[#0A0A0A] text-white shadow-sm ring-1 ring-black/5 inset-ring">
         {score}% Match
       </span>
     )
   }
   if (score >= 70) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium font-sans bg-amber-50 text-amber-700 border border-amber-100">
-        {score}% — Needs Input
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-sans bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
+        {score}% Match
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium font-sans bg-gray-100 text-gray-500 border border-gray-200">
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-sans bg-gray-50 text-gray-500 border border-gray-200 shadow-sm">
       {score}% Match
     </span>
   )
@@ -146,15 +147,14 @@ function JobCard({ job, onReject, onSelect }: JobCardProps) {
 
     if (job.needsInput) {
       return (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {onReject && (
-            <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
-              {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
-              Reject
+            <button onClick={handleRejectClick} disabled={isRejecting} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Reject">
+              {isRejecting ? <Loader2 size={16} className="animate-spin" /> : <X size={16} strokeWidth={2.5} />}
             </button>
           )}
-          <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 text-amber-700 text-xs font-sans font-medium rounded-sm border border-amber-200 hover:bg-amber-100 transition-colors">
-            Resolve & Resume Agent
+          <button onClick={() => onSelect?.(job)} className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 text-xs font-sans font-bold rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors shadow-sm">
+            Resolve & Resume
           </button>
         </div>
       )
@@ -165,14 +165,13 @@ function JobCard({ job, onReject, onSelect }: JobCardProps) {
 
     if (isAnalysisFailed) {
       return (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {onReject && (
-            <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
-              {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
-              Reject
+            <button onClick={handleRejectClick} disabled={isRejecting} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Reject">
+              {isRejecting ? <Loader2 size={16} className="animate-spin" /> : <X size={16} strokeWidth={2.5} />}
             </button>
           )}
-          <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:bg-gray-200 transition-colors">
+          <button onClick={() => onSelect?.(job)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-xs font-sans font-bold rounded-lg border border-gray-200 hover:bg-gray-200 transition-colors shadow-sm">
             Retry Analysis
           </button>
         </div>
@@ -181,15 +180,14 @@ function JobCard({ job, onReject, onSelect }: JobCardProps) {
 
     if (isUnanalyzed) {
       return (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {onReject && (
-            <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
-              {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
-              Reject
+            <button onClick={handleRejectClick} disabled={isRejecting} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Reject">
+              {isRejecting ? <Loader2 size={16} className="animate-spin" /> : <X size={16} strokeWidth={2.5} />}
             </button>
           )}
-          <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-sans font-medium rounded-sm border border-blue-200 hover:bg-blue-100 transition-colors">
-            Run AI Scraper
+          <button onClick={() => onSelect?.(job)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-b from-gray-800 to-[#0A0A0A] text-white text-xs font-sans font-bold rounded-lg hover:from-gray-700 hover:to-gray-900 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)] ring-1 ring-white/10 inset-ring">
+            Run Scraper
           </button>
         </div>
       )
@@ -197,15 +195,14 @@ function JobCard({ job, onReject, onSelect }: JobCardProps) {
 
     // Default: Awaiting Approval (State C)
     return (
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         {onReject && (
-          <button onClick={handleRejectClick} disabled={isRejecting} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-500 text-xs font-sans font-medium rounded-sm border border-gray-200 hover:border-gray-400 hover:text-gray-700 transition-colors">
-            {isRejecting ? <Loader2 size={11} className="animate-spin" /> : <X size={11} strokeWidth={2.5} />}
-            Reject
+          <button onClick={handleRejectClick} disabled={isRejecting} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Reject">
+            {isRejecting ? <Loader2 size={16} className="animate-spin" /> : <X size={16} strokeWidth={2.5} />}
           </button>
         )}
-        <button onClick={() => onSelect?.(job)} className="flex items-center gap-1 px-3 py-1.5 bg-[#0A0A0A] text-white text-xs font-sans font-medium rounded-sm hover:bg-gray-800 transition-colors">
-          Generate Documents & Apply
+        <button onClick={() => onSelect?.(job)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-b from-gray-800 to-[#0A0A0A] text-white text-xs font-sans font-bold rounded-lg hover:from-gray-700 hover:to-gray-900 transition-all shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)] ring-1 ring-white/10 inset-ring">
+          Apply Now
         </button>
       </div>
     )
@@ -213,8 +210,8 @@ function JobCard({ job, onReject, onSelect }: JobCardProps) {
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-xl p-5 cursor-pointer group flex flex-col"
-      style={{ boxShadow: hovered ? "0 4px 12px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.06)", transition: "box-shadow 0.2s ease" }}
+      className="bg-white border border-gray-100 rounded-2xl p-6 cursor-pointer flex flex-col relative overflow-hidden group"
+      style={{ boxShadow: hovered ? 'var(--shadow-float)' : 'var(--shadow-soft)', transform: hovered ? 'translateY(-2px)' : 'none', transition: 'var(--transition-spring)' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => {
@@ -224,27 +221,30 @@ function JobCard({ job, onReject, onSelect }: JobCardProps) {
         }
       }}
     >
-      <div className="flex items-start justify-between mb-3">
-        <span className="font-heading font-bold text-sm text-[#0A0A0A] leading-tight">{job.company}</span>
-        <span className="flex items-center gap-1 text-xs text-gray-400 font-sans shrink-0 ml-2">
-          <Clock size={11} strokeWidth={1.5} />
+      <div className="flex items-start justify-between mb-1">
+        <p className="font-heading text-lg font-bold text-[#0A0A0A] leading-snug group-hover:text-orange-600" style={{ transition: 'var(--transition-smooth)' }}>{job.title}</p>
+        <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-gray-400 shrink-0 ml-3 bg-gray-50 px-2 py-1 rounded-md">
+          <Clock size={10} strokeWidth={2.5} />
           {job.postedAgo}
         </span>
       </div>
-      <p className="font-sans text-sm text-gray-700 leading-snug mb-1">{job.title}</p>
-      <p className="font-sans text-xs text-gray-400 mb-4">{job.location}</p>
+      <p className="font-sans text-sm font-medium text-gray-500 leading-snug mb-5 flex flex-wrap gap-x-2 items-center">
+        <span className="text-gray-900 font-semibold">{job.company}</span>
+        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+        <span className="text-gray-500">{job.location}</span>
+      </p>
 
       {job.needsInput && (
-        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
-          <p className="font-sans text-xs font-medium text-amber-800 flex items-center gap-1.5">
-            <AlertCircle size={12} strokeWidth={2} /> 
+        <div className="mb-5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+          <p className="font-sans text-xs font-medium text-gray-700 flex items-center gap-1.5">
+            <AlertCircle size={14} strokeWidth={2.5} className="text-gray-500" /> 
             {job.missingField || "Agent Paralyzed"}
           </p>
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-auto">
-        <MatchBadge score={job.matchScore} />
+      <div className="flex items-center justify-between mt-auto pt-1">
+        <MatchBadge score={job.matchScore} needsInput={job.needsInput} missingField={job.missingField} />
         {renderActionButtons()}
       </div>
     </div>
@@ -303,13 +303,13 @@ function Sidebar({ activePage, onNavigate, ghostPulse, isOpen, onClose, candidat
           const isActive = activePage === id
           const isPulse = id === 'chat' && ghostPulse && !isActive
           return (
-            <button key={id} onClick={() => onNavigate(id)} className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans font-medium transition-colors text-left ${isActive ? "bg-gray-100 text-[#0A0A0A]" : "text-gray-500 hover:text-[#0A0A0A] hover:bg-gray-50"}`}>
-              <Icon size={16} strokeWidth={isActive ? 2 : 1.5} className={isActive ? "text-[#0A0A0A]" : "text-gray-400"} />
+            <button key={id} onClick={() => onNavigate(id)} className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans font-medium transition-colors text-left ${isActive ? "bg-orange-50 text-orange-600" : "text-gray-500 hover:text-[#0A0A0A] hover:bg-gray-50"}`}>
+              <Icon size={16} strokeWidth={isActive ? 2 : 1.5} className={isActive ? "text-orange-600" : "text-gray-400"} />
               {label}
               {isPulse && (
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
                 </span>
               )}
             </button>
@@ -382,17 +382,20 @@ function KanbanColumn({ column, jobs, onApprove, onReject, onSelect }: {
 }) {
   return (
     <div className="flex flex-col min-h-0">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 bg-gray-50/80 backdrop-blur-sm px-4 py-3 rounded-xl border border-gray-200/50 shadow-sm">
         <div>
-          <span className="font-sans text-xs font-semibold uppercase tracking-widest text-gray-400">{column.label}</span>
-          <p className="font-sans text-xs text-gray-300 mt-0.5">{column.description}</p>
+          <span className="font-heading text-xs font-bold uppercase tracking-wider text-gray-800">{column.label}</span>
+          <p className="font-sans text-[11px] font-medium text-gray-500 mt-0.5">{column.description}</p>
         </div>
-        <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center font-sans text-xs font-medium text-gray-500">{jobs.length}</span>
+        <span className="w-6 h-6 rounded-full bg-white shadow-sm ring-1 ring-gray-200/50 flex items-center justify-center font-sans text-xs font-bold text-[#0A0A0A]">{jobs.length}</span>
       </div>
       <div className="flex flex-col gap-3 overflow-y-auto flex-1 pb-4">
         {jobs.length === 0 ? (
-          <div className="flex items-center justify-center h-24 border border-dashed border-gray-200 rounded-xl">
-            <p className="font-sans text-xs text-gray-300">No jobs here yet</p>
+          <div className="flex flex-col items-center justify-center h-32 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+            <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+            </span>
+            <p className="font-sans text-xs font-medium text-gray-400">No jobs here yet</p>
           </div>
         ) : (
           jobs.map((job) => <JobCard key={job.id} job={job} onApprove={onApprove} onReject={onReject} onSelect={onSelect} />)
@@ -712,38 +715,36 @@ export default function Dashboard() {
         ) : (
           <>
             {/* Top Action Bar */}
-            <header className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-5 flex flex-col gap-3 shrink-0">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
-                <div className="flex items-center gap-4 shrink-0 justify-between md:justify-start">
-
-                  
+            <header className="glass-panel sticky top-0 z-10 border-b border-gray-200/60 p-4 md:px-8 md:py-6 flex flex-col gap-4 shrink-0">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
+                <div className="flex flex-col gap-3 shrink-0">
                   {/* Mode Toggle */}
-                  <div className="flex bg-gray-100 p-0.5 rounded-sm">
+                  <div className="flex bg-gray-100/80 p-1 rounded-lg border border-gray-200/50 w-fit">
                     <button 
                       onClick={() => { setIsHunterMode(false); setScrapeError(null) }}
-                      className={`px-3 py-1 font-sans text-xs font-medium rounded-sm transition-colors ${!isHunterMode ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`px-4 py-1.5 font-sans text-sm font-semibold rounded-md transition-all ${!isHunterMode ? 'bg-white shadow-sm text-gray-900 ring-1 ring-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                       Paste Link
                     </button>
                     <button 
                       onClick={() => { setIsHunterMode(true); setScrapeError(null) }}
-                      className={`px-3 py-1 font-sans text-xs font-medium rounded-sm transition-colors flex items-center gap-1 ${isHunterMode ? 'bg-white shadow-sm text-[#0A0A0A]' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`px-4 py-1.5 font-sans text-sm font-semibold rounded-md transition-all flex items-center gap-1.5 ${isHunterMode ? 'bg-white shadow-sm text-[#0A0A0A] ring-1 ring-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
                     >
-                      <Bot size={12} /> The Hunter
+                      <Bot size={14} /> The Hunter
                     </button>
                   </div>
                 </div>
 
                 {isHunterMode ? (
                   <div className="flex-1 flex flex-col">
-                    <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex flex-col md:flex-row gap-3 items-end">
                       <div className="flex-1 relative">
-                        <label className="block font-heading text-xs font-medium text-[#0A0A0A] mb-1.5 tracking-wide">Role</label>
+                        <label className="block font-sans text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 pl-1">Target Role</label>
                         <select
                           value={hunterRole}
                           onChange={(e) => setHunterRole(e.target.value)}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 focus:outline-none focus:border-[#0A0A0A] appearance-none cursor-pointer"
-                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                          className="w-full px-4 py-3 bg-white border border-gray-200 hover:border-gray-300 rounded-xl font-sans text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer shadow-sm"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
                           disabled={hunterRunning}
                         >
                           <option value="" disabled>Select a role</option>
@@ -752,56 +753,58 @@ export default function Dashboard() {
                           ))}
                         </select>
                       </div>
-                      <div className="w-full md:w-48 relative">
+                      <div className="w-full md:w-64 relative">
+                        <label className="block font-sans text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 pl-1">Location</label>
                         <input
                           type="text"
                           value={hunterLocation}
                           onChange={(e) => setHunterLocation(e.target.value)}
-                          placeholder="Location (e.g. Remote)"
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm focus:outline-none focus:border-[#0A0A0A]"
+                          placeholder="e.g. Remote, Worldwide"
+                          className="w-full px-4 py-3 bg-white border border-gray-200 hover:border-gray-300 rounded-xl font-sans text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm placeholder:text-gray-300"
                           disabled={hunterRunning}
                         />
                       </div>
                       <button
                         onClick={handleHuntJobs}
                         disabled={hunterRunning || !hunterRole.trim() || !hunterLocation.trim()}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 disabled:opacity-50 shrink-0"
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-b from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-sans font-bold text-sm rounded-xl disabled:opacity-50 shrink-0 shadow-[0_2px_10px_rgba(249,115,22,0.2)] hover:shadow-[0_4px_14px_rgba(249,115,22,0.3)] transition-all ring-1 ring-white/20 inset-ring h-[46px]"
                       >
                         {hunterRunning
-                          ? <><Loader2 size={13} className="animate-spin" />Scanning...</>
-                          : <><Search size={13} />Hunt Roles</>
+                          ? <><Loader2 size={16} className="animate-spin" />Scanning...</>
+                          : <><Search size={16} strokeWidth={2.5} />Hunt Roles</>
                         }
                       </button>
                     </div>
                     {hunterRunning && (
-                      <div className="flex items-center gap-2 text-xs font-sans text-gray-500 mt-3 ml-1 animate-pulse">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                      <div className="flex items-center gap-2 text-xs font-sans text-orange-500 font-medium mt-3 ml-1 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping"></span>
                         {huntingStatus}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col md:flex-row gap-3">
+                  <div className="flex-1 flex flex-col md:flex-row gap-3 items-end">
                     <div className="flex-1 relative">
-                      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
+                      <label className="block font-sans text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 pl-1">Single Job URL</label>
+                      <Search size={16} className="absolute left-4 top-[38px] text-gray-400" strokeWidth={2} />
                       <input
                         type="url"
                         value={jobUrlInput}
                         onChange={(e) => { setJobUrlInput(e.target.value); setScrapeError(null) }}
                         onKeyDown={(e) => e.key === "Enter" && !scraperRunning && handleRunScraper()}
                         placeholder="Paste a job posting URL (e.g. linkedin.com/jobs/…)"
-                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-sm font-sans text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#0A0A0A] transition-colors"
+                        className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 hover:border-gray-300 rounded-xl font-sans text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0A0A0A]/10 focus:border-[#0A0A0A] transition-all shadow-sm"
                         disabled={scraperRunning}
                       />
                     </div>
                     <button
                       onClick={handleRunScraper}
                       disabled={scraperRunning || !jobUrlInput.trim()}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white font-sans font-medium text-sm rounded-sm hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-b from-gray-800 to-[#0A0A0A] hover:from-gray-700 hover:to-gray-900 text-white font-sans font-bold text-sm rounded-xl transition-all shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15)] ring-1 ring-white/10 inset-ring disabled:opacity-50 shrink-0 h-[46px]"
                     >
                       {scraperRunning
-                        ? <><Loader2 size={13} strokeWidth={2} className="animate-spin" />Analysing...</>
-                        : <><Play size={13} strokeWidth={2} />Run AI Scraper</>
+                        ? <><Loader2 size={16} strokeWidth={2.5} className="animate-spin" />Analysing...</>
+                        : <><Play size={16} strokeWidth={2.5} fill="currentColor" />Run Scraper</>
                       }
                     </button>
                   </div>
@@ -810,9 +813,9 @@ export default function Dashboard() {
 
               {/* Error banner */}
               {scrapeError && (
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded-sm">
-                  <AlertCircle size={14} className="text-red-500 shrink-0" strokeWidth={1.5} />
-                  <p className="font-sans text-xs text-red-700">{scrapeError}</p>
+                <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                  <AlertCircle size={16} className="text-red-500 shrink-0" strokeWidth={2} />
+                  <p className="font-sans text-sm font-medium text-red-800">{scrapeError}</p>
                 </div>
               )}
             </header>

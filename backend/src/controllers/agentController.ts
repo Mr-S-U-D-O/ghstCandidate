@@ -147,15 +147,16 @@ ${memoriesText}
   }
 
   // ── Initialize Stagehand ───────────────────────────────────────────
-  console.log(`[runAgent] Initializing Stagehand (LOCAL mode) with NVIDIA DeepSeek V4...`);
+  let modelConfig: any = {
+    modelName: "openai/meta/llama-3.1-70b-instruct",
+    apiKey: process.env.NVIDIA_API_KEY,
+    baseURL: "https://integrate.api.nvidia.com/v1"
+  };
+  console.log(`[runAgent] Initializing Stagehand (LOCAL mode) with NVIDIA Llama 3.1 70B...`);
 
   const stagehand: any = new Stagehand({
     env: "LOCAL",
-    model: {
-      modelName: "openai/deepseek-ai/deepseek-v4-flash",
-      apiKey: process.env.NVIDIA_API_KEY,
-      baseURL: "https://integrate.api.nvidia.com/v1"
-    },
+    model: modelConfig,
     verbose: 1,
     localBrowserLaunchOptions: {
       headless: false,
@@ -178,6 +179,7 @@ ${memoriesText}
     const MAX_STEPS = 50;
     let isSubmitted = false;
     let hasGeneratedDocs = false;
+    const actionHistory: string[] = []; // Track previous actions to break infinite loops
 
     while (stepCount < MAX_STEPS && !isSubmitted) {
       stepCount++;
@@ -362,6 +364,14 @@ ${profileContext}
   10. ANTI-SHORTCUT RULE: You are strictly FORBIDDEN from clicking any buttons that say 'Apply with LinkedIn', 'Apply with Indeed', 'Quick Apply with MyGreenhouse', 'Sign In', or any other third-party login or SSO shortcuts. You MUST stay on the current page and fill out the raw application form manually.
   11. ANTI-LOOP & ANCHOR LINK RULE: On platforms like Greenhouse, the 'Apply' button at the top of the page is often just an anchor link that scrolls down. If you see application input fields (e.g., First Name, Last Name, Email, Resume Upload) anywhere in the DOM, you MUST prioritize filling them out immediately. DO NOT click 'Apply' or 'Apply Now' buttons if the form fields are already present on the page, or you will get trapped in an infinite click loop. Stop clicking anchors and start typing.
   12. FILE UPLOAD IGNORANCE RULE: If the system has already attached PDF documents to the file input fields on this page (i.e., resume and cover letter have already been uploaded), you MUST ignore any additional file upload buttons or inputs. Do NOT attempt to re-upload or replace already-attached documents. Proceed directly to filling out any remaining text, dropdown, or checkbox fields.
+  
+  PREVIOUS ACTIONS TRACKER (ANTI-LOOP PROTOCOL):
+  13. Below are your most recent actions on this page. If you are repeatedly filling out the same radio button or text field, YOU ARE STUCK IN AN INFINITE LOOP. Stop repeating yourself. 
+  14. If a field or radio button is already correctly filled according to the profile, DO NOT interact with it again. 
+  15. If you have successfully filled all required fields, your NEXT immediate action MUST be to click the final "Submit Application" (or equivalent) button.
+  
+  Recent Action History:
+  ${actionHistory.length > 0 ? actionHistory.join('\n  ') : 'No actions taken yet.'}
       `.trim();
 
       try {
@@ -419,6 +429,13 @@ ${profileContext}
             missingField: failureMsg,
           });
           return;
+        }
+
+        // 3.6 Push successful action to history
+        if (actResult && actResult.success !== false) {
+          const actionMsg = actResult.message || actResult.action || "Performed an unknown action";
+          actionHistory.push(`Step ${stepCount}: ${actionMsg}`);
+          if (actionHistory.length > 10) actionHistory.shift(); // keep last 10
         }
       } catch (actErr: any) {
         const msg: string = actErr?.message ?? String(actErr);

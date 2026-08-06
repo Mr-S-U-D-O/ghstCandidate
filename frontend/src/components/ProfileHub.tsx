@@ -133,21 +133,21 @@ export default function ProfileHub() {
         <p className="font-sans text-sm text-gray-500 mt-1">Manage your identity, extracted facts, and custom generated documents.</p>
         
         <div className="flex items-center gap-6 mt-6">
-          <button 
+          <button
             onClick={() => setActiveTab('profile')}
-            className={`pb-3 font-sans text-sm font-medium border-b-2 transition-colors ${activeTab === 'profile' ? 'border-[#0A0A0A] text-[#0A0A0A]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+            className={`pb-3 font-sans text-sm font-bold border-b-2 transition-all ${activeTab === 'profile' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}
           >
-            <span className="flex items-center gap-2"><User size={16} /> Parsed Profile</span>
+            <span className="flex items-center gap-2"><User size={16} /> My Profile</span>
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('memory')}
-            className={`pb-3 font-sans text-sm font-medium border-b-2 transition-colors ${activeTab === 'memory' ? 'border-[#0A0A0A] text-[#0A0A0A]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+            className={`pb-3 font-sans text-sm font-bold border-b-2 transition-all ${activeTab === 'memory' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}
           >
-            <span className="flex items-center gap-2"><Brain size={16} /> Ghost Brain</span>
+            <span className="flex items-center gap-2"><Brain size={16} /> Ghost Memory</span>
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('docs')}
-            className={`pb-3 font-sans text-sm font-medium border-b-2 transition-colors ${activeTab === 'docs' ? 'border-[#0A0A0A] text-[#0A0A0A]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+            className={`pb-3 font-sans text-sm font-bold border-b-2 transition-all ${activeTab === 'docs' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}
           >
             <span className="flex items-center gap-2"><FileText size={16} /> Document Vault</span>
           </button>
@@ -159,7 +159,7 @@ export default function ProfileHub() {
           {/* TAB 1: PROFILE */}
           {activeTab === 'profile' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              <div className="bg-white border border-gray-100 p-8 rounded-2xl" style={{ boxShadow: 'var(--shadow-soft)' }}>
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <h2 className="font-heading text-lg font-bold text-[#0A0A0A]">Candidate Summary</h2>
@@ -175,9 +175,9 @@ export default function ProfileHub() {
                   <button 
                     onClick={handleUpdateCv}
                     disabled={isParsingCv}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-[#0A0A0A] text-sm font-sans font-medium rounded-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-sans font-bold rounded-xl hover:border-gray-300 hover:text-gray-900 transition-all shadow-sm disabled:opacity-50"
                   >
-                    <Upload size={14} /> {isParsingCv ? "Parsing CV..." : "Update CV"}
+                    <Upload size={16} /> {isParsingCv ? "Parsing CV..." : "Update CV"}
                   </button>
                 </div>
                 
@@ -214,7 +214,7 @@ export default function ProfileHub() {
           {/* TAB 2: MEMORY BANK */}
           {activeTab === 'memory' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              <div className="bg-white border border-gray-100 p-8 rounded-2xl" style={{ boxShadow: 'var(--shadow-soft)' }}>
                 <h2 className="font-heading text-lg font-bold text-[#0A0A0A] mb-4">Add a Fact</h2>
                 <form onSubmit={handleAddMemory} className="flex gap-4 items-end">
                   <div className="flex-1">
@@ -239,15 +239,15 @@ export default function ProfileHub() {
                       className="w-full py-2 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400 font-sans text-sm"
                     />
                   </div>
-                  <button type="submit" className="flex items-center justify-center gap-2 px-6 py-2 bg-[#0A0A0A] text-white text-sm font-sans font-medium rounded-sm hover:bg-gray-800 transition-colors h-[38px]">
-                    <Plus size={16} /> Add Fact
+                  <button type="submit" disabled={!newKey || !newValue} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-b from-gray-800 to-[#0A0A0A] text-white font-sans font-bold text-sm rounded-xl hover:from-gray-700 hover:to-gray-900 transition-all disabled:opacity-50 shadow-sm ring-1 ring-white/10 inset-ring">
+                    <Plus size={16} /> Add
                   </button>
                 </form>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white border border-gray-100 p-8 rounded-2xl" style={{ boxShadow: 'var(--shadow-soft)' }}>
                 {memories.map(m => (
-                  <div key={m.id} className="bg-white border border-gray-200 p-4 rounded-xl flex items-start justify-between group shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <div key={m.id} className="bg-white border border-gray-200 p-4 rounded-xl flex items-start justify-between group shadow-[0_1px_3px_rgba(0,0,0,0.04)] mb-4 last:mb-0">
                     <div>
                       <div className="font-heading text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{m.memory_key}</div>
                       <div className="font-sans text-sm text-[#0A0A0A] font-medium">{m.memory_value}</div>
@@ -262,7 +262,7 @@ export default function ProfileHub() {
                   </div>
                 ))}
                 {memories.length === 0 && (
-                  <div className="col-span-full py-12 text-center">
+                  <div className="py-12 text-center">
                     <p className="text-gray-400 font-sans text-sm">No memories recorded yet. Add one above or chat with the Ghost!</p>
                   </div>
                 )}
@@ -272,7 +272,7 @@ export default function ProfileHub() {
 
           {/* TAB 3: DOCUMENT VAULT */}
           {activeTab === 'docs' && (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <div className="bg-white border border-gray-100 p-8 rounded-2xl" style={{ boxShadow: 'var(--shadow-soft)' }}>
               <div className="p-6 border-b border-gray-200">
                 <h2 className="font-heading text-lg font-bold text-[#0A0A0A]">Generated Documents</h2>
                 <p className="font-sans text-sm text-gray-500 mt-1">Custom tailored Resumes and Cover Letters for your applications.</p>

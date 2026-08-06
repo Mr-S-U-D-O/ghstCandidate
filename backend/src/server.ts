@@ -7,6 +7,7 @@ import { chatProfiler } from "./controllers/chatController.js"
 import { runAgent } from "./controllers/agentController.js"
 import { deleteAccount } from "./controllers/userController.js"
 import { joinWaitlist } from "./controllers/waitlistController.js"
+import adminRoutes from "./routes/adminRoutes.js"
 
 // ── Load .env before anything else ────────────────────────────────
 dotenv.config()
@@ -47,6 +48,7 @@ app.post("/api/run-agent", runAgent)
 app.delete("/api/user/account", deleteAccount)
 app.post("/api/waitlist", joinWaitlist)
 app.delete("/api/jobs/:id", deleteJob)
+app.use("/api/admin", adminRoutes)
 
 // 404 catch-all
 app.use((_req, res) => {
