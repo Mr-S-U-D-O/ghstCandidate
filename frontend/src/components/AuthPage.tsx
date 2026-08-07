@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Clock, CheckCircle2, TrendingUp, Send, Zap } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import authVideo from '../assets/auth-bg.mp4'
@@ -18,7 +18,8 @@ const TESTIMONIALS = [
     quote: "ghstCandidate landed me a Senior DevOps role in two weeks. I didn't manually fill out a single Workday form.",
     author: "Malik K.",
     role: "DevOps Engineer",
-    badgeText: "⏱️ Saved 45 hours"
+    icon: Clock,
+    badgeText: "Saved 45 Hours"
   },
   {
     id: 2,
@@ -26,7 +27,8 @@ const TESTIMONIALS = [
     quote: "The Ghost worker applied to 300 jobs while I was sleeping. I woke up to 4 interview requests from top startups.",
     author: "Elena R.",
     role: "Product Manager",
-    badgeText: "🎉 Hired in 7 Days"
+    icon: CheckCircle2,
+    badgeText: "Hired in 7 Days"
   },
   {
     id: 3,
@@ -34,7 +36,8 @@ const TESTIMONIALS = [
     quote: "I was skeptical, but the AI tailoring is genuinely better than my own manual resume tweaks. The match rate is insane.",
     author: "David C.",
     role: "Data Scientist",
-    badgeText: "📈 3x Interview Rate"
+    icon: TrendingUp,
+    badgeText: "3x Interview Rate"
   },
   {
     id: 4,
@@ -42,7 +45,8 @@ const TESTIMONIALS = [
     quote: "It's like having a dedicated recruiting agency working for you 24/7. Absolutely game-changing for my career shift.",
     author: "Aisha M.",
     role: "UX Designer",
-    badgeText: "🎯 500+ Applications"
+    icon: Send,
+    badgeText: "500+ Applications"
   },
   {
     id: 5,
@@ -50,7 +54,8 @@ const TESTIMONIALS = [
     quote: "I let the Ghost handle the grind while I focused on interview prep. I've never felt more relaxed job hunting.",
     author: "Kenji T.",
     role: "Frontend Developer",
-    badgeText: "✨ Stress-free Search"
+    icon: Zap,
+    badgeText: "Autonomous Search"
   }
 ]
 
@@ -294,34 +299,40 @@ export default function AuthPage() {
       >
         <div className="w-full h-full relative rounded-[32px] overflow-hidden shadow-2xl bg-[#0A0A0A]">
           {TESTIMONIALS.map((testi, idx) => (
-             <div 
-               key={testi.id}
-               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${idx === currentTestiIdx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-             >
-                {/* Background Image */}
-                <img
-                  src={testi.image}
-                  alt="User testimonial"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                {/* Gradient Overlay */}
-                <div className="absolute bottom-0 left-0 w-full h-3/5 bg-gradient-to-t from-black/95 via-black/60 to-transparent"></div>
+            <div 
+              key={testi.id}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${idx === currentTestiIdx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            >
+              {/* Background Image - z-0 */}
+              <img
+                src={testi.image}
+                alt="User testimonial"
+                className="absolute inset-0 w-full h-full object-cover z-0"
+              />
+              
+              {/* Gradient Overlay - z-10 */}
+              <div className="absolute bottom-0 left-0 w-full h-[65%] bg-gradient-to-t from-black/95 via-black/60 to-transparent z-10"></div>
+              
+              {/* Bottom Content Area - Force z-20 and explicit hex colors */}
+              <div className="absolute bottom-12 left-8 right-8 flex flex-col items-start gap-4 z-20">
                 
-                {/* Bottom Content Area */}
-                <div className="absolute bottom-12 left-8 right-8 flex flex-col items-start gap-4 z-20">
-                  <div className="bg-white/20 backdrop-blur-md text-white text-xs font-sans px-3.5 py-1.5 rounded-full shadow-sm border border-white/10">
-                    {testi.badgeText}
-                  </div>
-                  
-                  <p className="text-2xl lg:text-3xl font-sans font-semibold text-white leading-snug text-balance">
-                    "{testi.quote}"
-                  </p>
-                  
-                  <p className="text-sm font-sans text-white font-medium">
-                    {testi.author} - {testi.role}
-                  </p>
+                {/* Achievement Pill */}
+                <div className="bg-white/20 backdrop-blur-md text-[#FFFFFF] text-xs font-sans font-medium px-3.5 py-1.5 rounded-full shadow-sm border border-white/20 flex items-center gap-2">
+                  <testi.icon className="w-3.5 h-3.5 text-[#ff6900]" />
+                  <span>{testi.badgeText}</span>
                 </div>
-             </div>
+                
+                {/* Testimonial Quote */}
+                <p className="text-2xl lg:text-3xl font-sans font-semibold leading-snug text-balance" style={{ color: '#FFFFFF', textShadow: '0px 4px 12px rgba(0,0,0,0.8)' }}>
+                  "{testi.quote}"
+                </p>
+                
+                {/* Attribution */}
+                <p className="text-sm font-sans font-medium mt-3" style={{ color: '#FFFFFF', opacity: 0.9 }}>
+                  {testi.author} - {testi.role}
+                </p>
+              </div>
+            </div>
           ))}
 
           {/* Top Quote Icon - Fixed over carousel */}
