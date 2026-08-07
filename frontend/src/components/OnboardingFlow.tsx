@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UploadCloud, CheckCircle2, Loader2, X, FileText } from 'lucide-react'
 import { useUser } from '../context/UserContext'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { Button } from '@astryxdesign/core/Button'
+
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
 
@@ -379,14 +382,9 @@ export default function OnboardingFlow() {
 
   // ── Common UI Elements ──────────────────────────────────────────
   const ContinueButton = ({ isValid, onClick }: { isValid: boolean, onClick: () => void }) => (
-    <button
-      onClick={onClick}
-      className={`w-full max-w-sm mx-auto py-4 mt-8 bg-orange-500 text-white font-sans font-medium rounded-lg hover:bg-orange-600 transition-all duration-300 ${
-        isValid ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none absolute'
-      }`}
-    >
-      Continue
-    </button>
+    <div className={`w-full max-w-sm mx-auto mt-8 transition-all duration-300 ${isValid ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none absolute'}`}>
+      <Button onClick={onClick} variant="primary" style={{ width: '100%' }}>Continue</Button>
+    </div>
   )
 
   const SkipButton = ({ onClick }: { onClick: () => void }) => (
@@ -469,31 +467,11 @@ export default function OnboardingFlow() {
         
         <div className="w-full max-w-sm space-y-5 text-left font-sans">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
-                First Name <span className="text-red-500 font-bold">*</span>
-              </label>
-              <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="Jane" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
-                Last Name <span className="text-red-500 font-bold">*</span>
-              </label>
-              <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="Doe" />
-            </div>
+            <TextInput label="First Name" isRequired value={formData.first_name} onChange={(val) => setFormData(p => ({...p, first_name: val}))} placeholder="Jane" />
+            <TextInput label="Last Name" isRequired value={formData.last_name} onChange={(val) => setFormData(p => ({...p, last_name: val}))} placeholder="Doe" />
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
-              Email <span className="text-red-500 font-bold">*</span>
-            </label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="jane@example.com" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
-              Phone
-            </label>
-            <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="+1 (555) 000-0000" />
-          </div>
+          <TextInput type="email" label="Email" isRequired value={formData.email} onChange={(val) => setFormData(p => ({...p, email: val}))} placeholder="jane@example.com" />
+          <TextInput label="Phone" value={formData.phone} onChange={(val) => setFormData(p => ({...p, phone: val}))} placeholder="+1 (555) 000-0000" />
         </div>
 
         <ContinueButton isValid={isStep1Valid} onClick={handleNext} />
@@ -684,9 +662,7 @@ export default function OnboardingFlow() {
           If you answer them now, the AI can apply to jobs for you completely autonomously while you sleep.
         </p>
         
-        <button onClick={handleNext} className="w-full max-w-sm mx-auto py-4 bg-orange-500 text-white font-sans font-medium rounded-lg hover:bg-orange-600 transition-colors shadow-xl shadow-orange-500/20">
-          Let's do it
-        </button>
+        <Button onClick={handleNext} variant="primary" style={{ width: '100%', maxWidth: '24rem', margin: '0 auto' }}>Let's do it</Button>
       </StepContainer>
 
       {/* ── Step 7: Links (Part 2) ── */}
@@ -695,24 +671,17 @@ export default function OnboardingFlow() {
         <p className="font-sans text-gray-500 text-center mb-10">Where can employers see your work?</p>
         
         <div className="w-full max-w-sm space-y-5 text-left font-sans">
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">LinkedIn Profile</label>
-            <input type="url" name="linkedin_url" value={formData.linkedin_url} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="https://linkedin.com/in/..." />
+          <div><TextInput type="url" label="LinkedIn Profile" value={formData.linkedin_url} onChange={(val) => setFormData(p => ({...p, linkedin_url: val}))} placeholder="https://linkedin.com/in/..." />
             {!isLinkedinValid && (
               <p className="text-red-500 text-xs mt-1.5 font-bold">Please provide a valid LinkedIn URL.</p>
             )}
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">GitHub Profile</label>
-            <input type="url" name="github_url" value={formData.github_url} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="https://github.com/..." />
+          <div><TextInput type="url" label="GitHub Profile" value={formData.github_url} onChange={(val) => setFormData(p => ({...p, github_url: val}))} placeholder="https://github.com/..." />
             {!isGithubValid && (
               <p className="text-red-500 text-xs mt-1.5 font-bold">Please provide a valid GitHub URL.</p>
             )}
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">Portfolio / Personal Website</label>
-            <input type="url" name="portfolio_url" value={formData.portfolio_url} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="https://..." />
-          </div>
+          <TextInput type="url" label="Portfolio / Personal Website" value={formData.portfolio_url} onChange={(val) => setFormData(p => ({...p, portfolio_url: val}))} placeholder="https://..." />
         </div>
 
         <ContinueButton isValid={isStep7ValidForContinue} onClick={handleNext} />
@@ -746,10 +715,7 @@ export default function OnboardingFlow() {
               </label>
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">Years of Professional Experience</label>
-            <input type="number" name="years_of_experience" value={formData.years_of_experience} onChange={handleChange} min="0" className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="e.g. 5" />
-          </div>
+          <TextInput type="text" label="Years of Professional Experience" value={formData.years_of_experience} onChange={(val) => setFormData(p => ({...p, years_of_experience: val}))} placeholder="e.g. 5" />
         </div>
 
         <ContinueButton isValid={isStep8Filled} onClick={handleNext} />
@@ -762,22 +728,7 @@ export default function OnboardingFlow() {
         <p className="font-sans text-gray-500 text-center mb-10">Your academic background.</p>
         
         <div className="w-full max-w-sm space-y-5 text-left font-sans">
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">Highest Level of Education</label>
-            <select name="education_level" value={formData.education_level} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors appearance-none">
-              <option value="">Select level...</option>
-              <option value="High School">High School / GED</option>
-              <option value="Associate's Degree">Associate's Degree</option>
-              <option value="Bachelor's Degree">Bachelor's Degree</option>
-              <option value="Master's Degree">Master's Degree</option>
-              <option value="Doctorate (PhD)">Doctorate (PhD)</option>
-              <option value="Self-Taught / Bootcamp">Self-Taught / Bootcamp</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">Major / Field of Study</label>
-            <input type="text" name="highest_degree_major" value={formData.highest_degree_major} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="e.g. Computer Science" />
-          </div>
+          <TextInput label="Major / Field of Study" value={formData.highest_degree_major} onChange={(val) => setFormData(p => ({...p, highest_degree_major: val}))} placeholder="e.g. Computer Science" />
         </div>
 
         <ContinueButton isValid={isStep9Filled} onClick={handleNext} />
@@ -791,14 +742,8 @@ export default function OnboardingFlow() {
         
         <div className="w-full max-w-md space-y-5 text-left font-sans">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">Salary Expectation</label>
-              <input type="text" name="salary_expectation" value={formData.salary_expectation} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="e.g. $120k" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">Notice Period</label>
-              <input type="text" name="notice_period" value={formData.notice_period} onChange={handleChange} className="w-full py-3 bg-transparent border-b border-black outline-none focus:outline-none focus:border-b-2 focus:border-[#ff6900] transition-colors placeholder-gray-400" placeholder="e.g. 2 weeks" />
-            </div>
+            <TextInput label="Salary Expectation" value={formData.salary_expectation} onChange={(val) => setFormData(p => ({...p, salary_expectation: val}))} placeholder="e.g. $120k" />
+            <TextInput label="Notice Period" value={formData.notice_period} onChange={(val) => setFormData(p => ({...p, notice_period: val}))} placeholder="e.g. 2 weeks" />
           </div>
           
           <div>
@@ -832,14 +777,14 @@ export default function OnboardingFlow() {
         <p className="font-sans text-lg text-gray-500 max-w-md mx-auto leading-relaxed mb-10">
           Your autonomous AI brain is now fully loaded. You can change these answers later in your Profile settings.
         </p>
-        <button
+        <Button
           onClick={handleFinish}
-          disabled={isSaving}
-          className="px-10 py-4 bg-orange-500 text-white rounded-full font-sans font-bold text-lg hover:bg-orange-600 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-orange-500/20"
+          isDisabled={isSaving}
+          variant="primary"
+          style={{ padding: '16px 40px', borderRadius: '9999px' }}
         >
-          {isSaving && <Loader2 size={20} className="animate-spin" />}
-          {isSaving ? 'Saving Profile...' : 'Save & Go to Dashboard'}
-        </button>
+          {isSaving ? <><Loader2 size={20} className="animate-spin mr-2" /> Saving Profile...</> : 'Save & Go to Dashboard'}
+        </Button>
       </StepContainer>
 
     </div>

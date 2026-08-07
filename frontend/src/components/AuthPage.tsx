@@ -11,6 +11,49 @@ const PLACEHOLDERS = [
   { email: 'founder@unicorn.io', password: 'series_a_funding' }
 ]
 
+const TESTIMONIALS = [
+  {
+    id: 1,
+    image: "/testimonials/testimonial-1.jpg",
+    quote: "ghstCandidate landed me a Senior DevOps role in two weeks. I didn't manually fill out a single Workday form.",
+    author: "Malik K.",
+    role: "DevOps Engineer",
+    badgeText: "⏱️ Saved 45 hours"
+  },
+  {
+    id: 2,
+    image: "/testimonials/testimonial-2.jpg",
+    quote: "The Ghost worker applied to 300 jobs while I was sleeping. I woke up to 4 interview requests from top startups.",
+    author: "Elena R.",
+    role: "Product Manager",
+    badgeText: "🎉 Hired in 7 Days"
+  },
+  {
+    id: 3,
+    image: "/testimonials/testimonial-3.jpg",
+    quote: "I was skeptical, but the AI tailoring is genuinely better than my own manual resume tweaks. The match rate is insane.",
+    author: "David C.",
+    role: "Data Scientist",
+    badgeText: "📈 3x Interview Rate"
+  },
+  {
+    id: 4,
+    image: "/testimonials/testimonial-4.jpg",
+    quote: "It's like having a dedicated recruiting agency working for you 24/7. Absolutely game-changing for my career shift.",
+    author: "Aisha M.",
+    role: "UX Designer",
+    badgeText: "🎯 500+ Applications"
+  },
+  {
+    id: 5,
+    image: "/testimonials/testimonial-5.jpg",
+    quote: "I let the Ghost handle the grind while I focused on interview prep. I've never felt more relaxed job hunting.",
+    author: "Kenji T.",
+    role: "Frontend Developer",
+    badgeText: "✨ Stress-free Search"
+  }
+]
+
 export default function AuthPage() {
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode')
@@ -23,12 +66,18 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null)
   
   const [placeholders, setPlaceholders] = useState(PLACEHOLDERS[0])
+  const [currentTestiIdx, setCurrentTestiIdx] = useState(0)
   
   const navigate = useNavigate()
 
   useEffect(() => {
     const rand = Math.floor(Math.random() * PLACEHOLDERS.length)
     setPlaceholders(PLACEHOLDERS[rand])
+    
+    const timer = setInterval(() => {
+      setCurrentTestiIdx((prev) => (prev + 1) % TESTIMONIALS.length)
+    }, 5000)
+    return () => clearInterval(timer)
   }, [])
 
   const getFriendlyErrorMessage = (msg: string) => {
@@ -235,23 +284,67 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* --- Image/Graphic Container with Cinematic Video Background --- */}
+      {/* --- Editorial Testimonial Container --- */}
       <div
-        className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full bg-[#0A0A0A] transition-all duration-700 ease-in-out flex-col items-center justify-center p-12 overflow-hidden ${
+        className={`hidden lg:flex absolute top-0 left-0 w-1/2 h-full transition-all duration-700 ease-in-out p-3 lg:p-4 ${
           isSignUp
             ? 'translate-x-full rounded-l-3xl'
             : 'translate-x-0 rounded-r-3xl'
         }`}
       >
-        <video
-          src={authVideo}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
+        <div className="w-full h-full relative rounded-[32px] overflow-hidden shadow-2xl bg-[#0A0A0A]">
+          {TESTIMONIALS.map((testi, idx) => (
+             <div 
+               key={testi.id}
+               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${idx === currentTestiIdx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+             >
+                {/* Background Image */}
+                <img
+                  src={testi.image}
+                  alt="User testimonial"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                {/* Gradient Overlay */}
+                <div className="absolute bottom-0 left-0 w-full h-3/5 bg-gradient-to-t from-black/95 via-black/60 to-transparent"></div>
+                
+                {/* Bottom Content Area */}
+                <div className="absolute bottom-12 left-8 right-8 flex flex-col items-start gap-4 z-20">
+                  <div className="bg-white/20 backdrop-blur-md text-white text-xs font-sans px-3.5 py-1.5 rounded-full shadow-sm border border-white/10">
+                    {testi.badgeText}
+                  </div>
+                  
+                  <p className="text-2xl lg:text-3xl font-sans font-semibold text-white leading-snug text-balance">
+                    "{testi.quote}"
+                  </p>
+                  
+                  <p className="text-sm font-sans text-white font-medium">
+                    {testi.author} - {testi.role}
+                  </p>
+                </div>
+             </div>
+          ))}
+
+          {/* Top Quote Icon - Fixed over carousel */}
+          <div className="absolute top-8 left-8 size-12 bg-white rounded-xl flex items-center justify-center shadow-lg z-20">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 11H6.5C6.5 8.5 8 7 10 7V5C7 5 4.5 7.5 4.5 11V18H10V11ZM20 11H16.5C16.5 8.5 18 7 20 7V5C17 5 14.5 7.5 14.5 11V18H20V11Z" fill="currentColor"/>
+            </svg>
+          </div>
+
+          {/* Story Progress Bar - Fixed over carousel */}
+          <div className="absolute bottom-4 left-8 right-8 flex gap-1.5 z-20">
+            {TESTIMONIALS.map((_, idx) => (
+              <div 
+                key={idx} 
+                className={`h-1 rounded-full flex-1 transition-all duration-300 ${
+                  idx === currentTestiIdx 
+                    ? 'bg-[#ff6900] shadow-[0_0_8px_rgba(255,105,0,0.8)]' 
+                    : 'bg-white/30'
+                }`}
+              ></div>
+            ))}
+          </div>
+        </div>
       </div>
 
     </div>
