@@ -360,7 +360,7 @@ ${profileContext}
   NAVIGATION & MODAL RULES:
   6. AGGREGATOR GATEWAYS: If you land on an intermediary job board (e.g., Jobicy, WeWorkRemotely, RemoteOK), your primary goal is to find the link that routes to the employer's direct website. Click buttons like 'Apply for this job', 'Apply Now', or 'Continue on employer website'.
   7. MODAL DISAMBIGUATION (GUEST OVERRIDE RULE): If a modal or popup appears offering options like 'Sign Up and Apply', 'Log In', or 'Continue as Guest' / 'Apply without account', you MUST EXCLUSIVELY choose 'Continue as Guest' or 'Apply without account'. If you see a button or link that says 'Apply on Company Site', 'Apply on Employer Website', or 'View on Employer Website', click it IMMEDIATELY and without hesitation. NEVER select options that require creating an aggregator account.
-  8. REAL ATS TARGET RECOGNITION: Your navigation phase is COMPLETE when you land on an application form with actual candidate input fields (e.g. First Name, Email, Resume Upload) or an ATS domain (greenhouse.io, lever.co, ashbyhq.com, workable.com). Once on this page, transition immediately to filling out the form.
+  8. REAL ATS TARGET RECOGNITION: Your ultimate target is the application form itself with actual candidate input fields (e.g., First Name, Email, Resume Upload). Even on known ATS domains (like greenhouse.io, ashbyhq.com), the form might be hidden behind a tab or button. If you do NOT see form fields, you MUST click 'Apply for this Job', 'Apply', or 'Application' to reveal them.
   9. BACKTRACK PROTOCOL: If an action redirects you to an email verification, 2FA, login screen, OR any page that is NOT the application form AND NOT a known ATS domain, STOP immediately. Do not attempt to log in. Navigate back using page.goBack() and attempt an alternative path to reach the application form.
   10. ANTI-SHORTCUT RULE: You are strictly FORBIDDEN from clicking any buttons that say 'Apply with LinkedIn', 'Apply with Indeed', 'Quick Apply with MyGreenhouse', 'Sign In', or any other third-party login or SSO shortcuts. You MUST stay on the current page and fill out the raw application form manually.
   11. ANTI-LOOP & ANCHOR LINK RULE: On platforms like Greenhouse, the 'Apply' button at the top of the page is often just an anchor link that scrolls down. If you see application input fields (e.g., First Name, Last Name, Email, Resume Upload) anywhere in the DOM, you MUST prioritize filling them out immediately. DO NOT click 'Apply' or 'Apply Now' buttons if the form fields are already present on the page, or you will get trapped in an infinite click loop. Stop clicking anchors and start typing.
@@ -370,6 +370,7 @@ ${profileContext}
   13. Below are your most recent actions on this page. If you are repeatedly filling out the same radio button or text field, YOU ARE STUCK IN AN INFINITE LOOP. Stop repeating yourself. 
   14. If a field or radio button is already correctly filled according to the profile, DO NOT interact with it again. 
   15. If you have successfully filled all required fields, your NEXT immediate action MUST be to click the final "Submit Application" (or equivalent) button.
+  16. TABS & HIDDEN FORMS: If you are on an ATS (like Ashby) and do not see the application form fields immediately, look for tabs or links labeled 'Application', 'Apply', or 'Submit Application' and click them to reveal the form.
   
   Recent Action History:
   ${actionHistory.length > 0 ? actionHistory.join('\n  ') : 'No actions taken yet.'}
@@ -388,7 +389,7 @@ ${profileContext}
             if (msg.includes("529") || msg.includes("429") || msg.includes("AI_PROVIDER_OVERLOADED")) {
               if (actAttempts < 3) {
                 const delay = actAttempts === 1 ? 5000 : 10000;
-                console.warn(`[runAgent] ⚠️ Upstream AI provider overloaded. Retrying in ${delay}ms (Attempt ${actAttempts}/3)...`);
+                console.warn(`[runAgent]  Upstream AI provider overloaded. Retrying in ${delay}ms (Attempt ${actAttempts}/3)...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
               }
