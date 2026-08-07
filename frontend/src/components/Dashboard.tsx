@@ -22,7 +22,8 @@ import {
   Loader2,
   Bot,
   User,
-  Mail
+  Mail,
+  Check
 } from "lucide-react"
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -59,14 +60,7 @@ const COLUMNS: { id: ColumnId; label: string; description: string }[] = [
 
 // ── Tech Roles (Data Lake niche) ──────────────────────────────────
 
-const TECH_ROLES = [
-  "Web Developer",
-  "Frontend Developer",
-  "Backend Developer",
-  "Fullstack Engineer",
-  "UI/UX Designer",
-  "Product Manager",
-]
+// Tech roles removed — Hunter now uses free-text input pre-filled from user profile
 
 // ── Match Badge ───────────────────────────────────────────────────
 
@@ -416,6 +410,7 @@ export default function Dashboard() {
   const [jobUrlInput, setJobUrlInput] = useState("")
   const [scraperRunning, setScraperRunning] = useState(false)
   const [scrapeError, setScrapeError] = useState<string | null>(null)
+  const [huntResult, setHuntResult] = useState<{ type: 'success' | 'info', message: string } | null>(null)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [ghostPulse, setGhostPulse] = useState(false)
 
@@ -501,6 +496,26 @@ export default function Dashboard() {
     fetchJobs()
   }, [user])
 
+  // ── Supabase Realtime — auto-refresh when cron/agent updates jobs ──
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase
+      .channel('jobs-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jobs', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          console.log('[Dashboard] Realtime event:', payload.eventType)
+          fetchJobs()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user])
+
   const handleHuntJobs = async () => {
     if (!hunterRole.trim() || !hunterLocation.trim()) {
        setScrapeError("Please provide both a Role and Location.")
@@ -508,6 +523,7 @@ export default function Dashboard() {
     }
     setHunterRunning(true)
     setScrapeError(null)
+    setHuntResult(null)
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -536,6 +552,17 @@ export default function Dashboard() {
       console.log(`[Dashboard] Hunter complete! Discovered ${data.count} jobs.`)
       await fetchJobs() // Refresh UI from Supabase
 
+      if (data.count > 0) {
+        setHuntResult({ type: 'success', message: `Hunt complete! Found ${data.count} new high-match jobs.` })
+      } else {
+        setHuntResult({ type: 'info', message: `Hunt complete. No new matches found above the 40% threshold.` })
+      }
+
+      // Auto-hide the result after 6 seconds
+      setTimeout(() => {
+        setHuntResult(null)
+      }, 6000)
+
     } catch (err: unknown) {
       setScrapeError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -545,7 +572,8 @@ export default function Dashboard() {
 
   const navigateTo = (page: NavPage) => {
     if (page === 'settings') {
-      navigate('/settings')
+      // Route to ProfileHub instead of broken /settings → OnboardingFlow
+      setActivePage('profile')
       return
     }
     if (page === 'chat') setGhostPulse(false)
@@ -554,12 +582,10 @@ export default function Dashboard() {
 
   const handleApprove = (id: string) => {
     console.log("[Dashboard] handleApprove clicked for job ID:", id)
-    setJobs((prev) => prev.map((j) => j.id === id ? { ...j, column: "applied" as ColumnId } : j))
-    setSelectedJob((prev) => prev?.id === id ? { ...prev, column: "applied" as ColumnId } : prev)
-    // Sync to Supabase
-    if (user) {
-      supabase.from('jobs').update({ column: 'applied' }).eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error('[Dashboard] Failed to update job column:', error.message) })
+    // Route through MatchReportPanel so the agent actually runs
+    const targetJob = jobs.find(j => j.id === id)
+    if (targetJob) {
+      setSelectedJob(targetJob)
     }
   }
 
@@ -740,18 +766,14 @@ export default function Dashboard() {
                     <div className="flex flex-col md:flex-row gap-3 items-end">
                       <div className="flex-1 relative">
                         <label className="block font-sans text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 pl-1">Target Role</label>
-                        <select
+                        <input
+                          type="text"
                           value={hunterRole}
                           onChange={(e) => setHunterRole(e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-gray-200 hover:border-gray-300 rounded-xl font-sans text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer shadow-sm"
-                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
+                          placeholder="e.g. Frontend Developer, Data Scientist"
+                          className="w-full px-4 py-3 bg-white border border-gray-200 hover:border-gray-300 rounded-xl font-sans text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm placeholder:text-gray-300"
                           disabled={hunterRunning}
-                        >
-                          <option value="" disabled>Select a role</option>
-                          {TECH_ROLES.map(role => (
-                            <option key={role} value={role}>{role}</option>
-                          ))}
-                        </select>
+                        />
                       </div>
                       <div className="w-full md:w-64 relative">
                         <label className="block font-sans text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 pl-1">Location</label>
@@ -818,6 +840,22 @@ export default function Dashboard() {
                   <p className="font-sans text-sm font-medium text-red-800">{scrapeError}</p>
                 </div>
               )}
+
+              {/* Success/Info banner */}
+              {huntResult && (
+                <div className={`flex items-center gap-2 px-4 py-3 border rounded-xl mt-2 animate-in fade-in slide-in-from-top-2 duration-300 ${
+                  huntResult.type === 'success' 
+                    ? 'bg-green-50 border-green-200 text-green-800' 
+                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                }`}>
+                  {huntResult.type === 'success' ? (
+                    <Check size={16} className="text-green-600 shrink-0" strokeWidth={2.5} />
+                  ) : (
+                    <AlertCircle size={16} className="text-blue-500 shrink-0" strokeWidth={2} />
+                  )}
+                  <p className="font-sans text-sm font-medium">{huntResult.message}</p>
+                </div>
+              )}
             </header>
 
             {/* Kanban Board */}
@@ -848,19 +886,27 @@ export default function Dashboard() {
         job={selectedJob}
         isOpen={selectedJob !== null}
         onClose={() => setSelectedJob(null)}
-        onApprove={(id) => { handleApprove(id); setSelectedJob(null) }}
+        onApprove={(id) => {
+          // After agent success, update local state and sync to Supabase
+          setJobs((prev) => prev.map((j) => j.id === id ? { ...j, column: "applied" as ColumnId } : j))
+          setSelectedJob(null)
+          if (user) {
+            supabase.from('jobs').update({ column: 'applied' }).eq('id', id).eq('user_id', user.id)
+              .then(({ error }) => { if (error) console.error('[Dashboard] Failed to update job column:', error.message) })
+          }
+        }}
         onReject={(id) => { handleReject(id); setSelectedJob(null) }}
         onNeedsInput={(id, missingField) => {
           console.log("[Dashboard] NEEDS_INPUT for job:", id, "missing:", missingField)
           setJobs(prev => prev.map(j => j.id === id ? { ...j, needsInput: true, missingField } : j))
           setSelectedJob(prev => prev?.id === id ? { ...prev, needsInput: true, missingField } : prev)
           setGhostPulse(true)
-          // Persist the needs_input flag to Supabase
           if (user) {
             supabase.from('jobs').update({ needs_input: true, missing_field: missingField }).eq('id', id).eq('user_id', user.id)
               .then(({ error }) => { if (error) console.error('[Dashboard] Failed to persist needs_input:', error.message) })
           }
         }}
+        onJobUpdated={fetchJobs}
       />
     </div>
   )

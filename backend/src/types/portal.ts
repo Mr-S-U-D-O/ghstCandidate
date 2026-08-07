@@ -13,5 +13,6 @@ export interface IngestedJob {
   description_html: string;
   apply_url: string;
   source: string;
+  ats_id?: string | null;
 }
 

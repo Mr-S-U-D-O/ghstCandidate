@@ -16,12 +16,13 @@ const app = express()
 const PORT = Number(process.env.PORT ?? 3001)
 
 // ── Middleware ─────────────────────────────────────────────────────
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : ["http://localhost:5173", "http://localhost:3000"]
+
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-  ],
-  methods: ["GET", "POST", "DELETE"],
+  origin: corsOrigins,
+  methods: ["GET", "POST", "PATCH", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }))
 app.use(express.json({ limit: "10mb" }))

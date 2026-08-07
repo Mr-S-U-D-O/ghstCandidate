@@ -9,14 +9,19 @@ const ACTORS = [
   'fantastic-jobs/lever-co-jobs-api'
 ];
 
-export async function runApifyFleet(): Promise<IngestedJob[]> {
+export async function runApifyFleet(configId?: string): Promise<IngestedJob[]> {
   const allJobs: IngestedJob[] = [];
 
   // Fetch active configurations from the database
-  const { data: activeConfigs, error } = await supabaseAdmin
-    .from('apify_fleet_configs')
-    .select('*')
-    .eq('is_active', true);
+  let query = supabaseAdmin.from('apify_fleet_configs').select('*');
+  
+  if (configId) {
+    query = query.eq('id', configId);
+  } else {
+    query = query.eq('is_active', true);
+  }
+
+  const { data: activeConfigs, error } = await query;
 
   if (error) {
     emitFleetLog(`[ApifyFleet] ❌ Failed to fetch fleet configs from database: ${error.message}`);

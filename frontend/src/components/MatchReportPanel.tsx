@@ -44,7 +44,7 @@ function MatchBadgeLarge({ score }: { score: number }) {
 
 // ── Panel ─────────────────────────────────────────────────────────
 
-export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onReject, onNeedsInput }: MatchReportPanelProps) {
+export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onReject, onNeedsInput, onJobUpdated }: MatchReportPanelProps) {
   const { candidateProfile, user } = React.useContext(UserContext)
   const [isApplying, setIsApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -121,8 +121,9 @@ export default function MatchReportPanel({ job, isOpen, onClose, onApprove, onRe
 
       if (updateError) throw updateError
 
-      if (arguments[0]?.onJobUpdated) {
-        arguments[0].onJobUpdated()
+      // Refresh the parent's job list to reflect updated analysis data
+      if (onJobUpdated) {
+        onJobUpdated()
       } else {
         onClose()
       }

@@ -16,10 +16,14 @@ export type { IngestedJob };
  *  - `jobController.ts` `huntJobs` as the live on-demand fallback
  *  - `jobController.ts` `seedHarvester` as a manual admin trigger
  */
-export async function ingestFeeds(): Promise<IngestedJob[]> {
-  console.log(`[Harvester] Starting distributed Apify ingestion fleet...`);
+export async function ingestFeeds(configId?: string): Promise<IngestedJob[]> {
+  if (configId) {
+    console.log(`[Harvester] Starting single Apify configuration run for config ID: ${configId}...`);
+  } else {
+    console.log(`[Harvester] Starting distributed Apify ingestion fleet...`);
+  }
   
-  const allJobs = await runApifyFleet();
+  const allJobs = await runApifyFleet(configId);
 
   // Deduplicate by apply_url
   const seen = new Set<string>();

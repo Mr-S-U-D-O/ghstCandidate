@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUser } from '../../context/UserContext'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
+
 interface FleetConfig {
   id: string
   niche_name: string
@@ -27,7 +29,7 @@ export default function FleetManager() {
 
   const fetchConfigs = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/admin/fleet', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/fleet`, {
         headers: { Authorization: `Bearer ${session?.access_token}` }
       })
       const data = await res.json()
@@ -49,7 +51,7 @@ export default function FleetManager() {
 
   // Setup SSE Connection
   useEffect(() => {
-    const eventSource = new EventSource('http://localhost:3001/api/admin/fleet-logs-stream')
+    const eventSource = new EventSource(`${API_BASE_URL}/api/admin/fleet-logs-stream`)
 
     eventSource.onmessage = (event) => {
       try {
@@ -81,7 +83,7 @@ export default function FleetManager() {
     e.preventDefault()
     try {
       const queriesArray = newQueries.split(',').map(q => q.trim()).filter(Boolean)
-      const res = await fetch('http://localhost:3001/api/admin/fleet', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/fleet`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -108,7 +110,7 @@ export default function FleetManager() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this fleet config?')) return
     try {
-      await fetch(`http://localhost:3001/api/admin/fleet/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/fleet/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.access_token}` }
       })
@@ -118,14 +120,23 @@ export default function FleetManager() {
     }
   }
 
-  const triggerFleet = async () => {
+  const triggerFleet = async (configId?: string) => {
     setIsTriggering(true)
     // Local pre-flight logs, server logs will handle the rest via SSE
-    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [Admin] Sending trigger signal to backend...`])
+    if (configId) {
+      setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [Admin] Sending single-run signal for config ${configId}...`])
+    } else {
+      setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [Admin] Sending full fleet trigger signal to backend...`])
+    }
+    
     try {
-      const res = await fetch('http://localhost:3001/api/admin/trigger-harvester', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/trigger-harvester`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token}` }
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}` 
+        },
+        body: JSON.stringify({ configId })
       })
       const data = await res.json()
       if (!data.success) {
@@ -192,7 +203,21 @@ export default function FleetManager() {
                       {c.last_run_at ? new Date(c.last_run_at).toLocaleString() : 'Never'}
                     </td>
                     <td className="p-4">
-                      <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 text-sm">Delete</button>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => triggerFleet(c.id)} 
+                          className="text-blue-500 hover:text-blue-700 text-sm font-medium disabled:opacity-50"
+                          disabled={isTriggering}
+                        >
+                          Run
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(c.id)} 
+                          className="text-red-500 hover:text-red-700 text-sm font-medium"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

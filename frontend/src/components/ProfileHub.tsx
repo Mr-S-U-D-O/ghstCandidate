@@ -295,9 +295,9 @@ export default function ProfileHub() {
                       <td className="px-6 py-4 capitalize">{doc.doc_type.replace('_', ' ')}</td>
                       <td className="px-6 py-4 text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</td>
                       <td className="px-6 py-4 text-right">
-                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-[#0A0A0A] hover:bg-gray-100 rounded-sm text-xs font-medium transition-colors">
+                        <a href={doc.file_path} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-[#0A0A0A] hover:bg-gray-100 rounded-sm text-xs font-medium transition-colors">
                           <Download size={12} /> View PDF
-                        </button>
+                        </a>
                       </td>
                     </tr>
                   ))}

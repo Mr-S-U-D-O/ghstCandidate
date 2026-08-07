@@ -114,7 +114,7 @@ async function scrapeJobPagePlaywright(url: string): Promise<string> {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 })
     await page.waitForTimeout(1500)
 
-    const text = await page.evaluate(() => {
+    let text = await page.evaluate(() => {
       const selectors = ["main", "article", "[data-testid*='job']", "[class*='job-description']", "body"]
       for (const sel of selectors) {
         const el = document.querySelector(sel)
@@ -125,6 +125,27 @@ async function scrapeJobPagePlaywright(url: string): Promise<string> {
       }
       return document.body.innerText?.trim() ?? ""
     })
+
+    // Iframe Traversal for ATS Embeds (e.g., Greenhouse)
+    if (text.length < 500) {
+      console.log(`[Tier-4/Playwright] Main page text < 500 chars. Checking iframes...`)
+      const frames = page.frames()
+      for (const frame of frames) {
+        // Skip the main page frame
+        if (frame === page.mainFrame()) continue
+
+        try {
+          const frameText = await frame.evaluate(() => document.body.innerText?.trim() ?? "")
+          if (frameText && frameText.length > 200) {
+            console.log(`[Tier-4/Playwright] Found significant text in iframe: ${frame.url()}`)
+            text += "\n" + frameText
+          }
+        } catch (e) {
+          // Ignore cross-origin frame errors if any
+          console.warn(`[Tier-4/Playwright] Could not read iframe text:`, e)
+        }
+      }
+    }
 
     return text
   } finally {
@@ -699,7 +720,8 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
         missing_or_weak: parsed.missingOrWeak,
         human_input_required: parsed.humanInputRequired,
         column: 'discovered',
-        needs_input: false
+        needs_input: false,
+        posted_ago: 'Just added'
       }
 
       const { data: insertedJob, error: insertError } = await scopedSupabase
@@ -802,9 +824,18 @@ export async function seedHarvester(req: Request, res: Response): Promise<void> 
 export async function deleteJob(req: Request, res: Response): Promise<void> {
   const { id } = req.params
 
+  // Build scoped Supabase client for RLS
+  const authHeader = req.headers.authorization
+  let scopedSupabase = supabase
+  if (authHeader) {
+    scopedSupabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!, {
+      global: { headers: { Authorization: authHeader } }
+    })
+  }
+
   try {
     // 1. Check generated_docs for associated documents
-    const { data: docs } = await supabase
+    const { data: docs } = await scopedSupabase
       .from('generated_docs')
       .select('resume_url, cover_letter_url')
       .eq('job_id', id)
@@ -828,7 +859,7 @@ export async function deleteJob(req: Request, res: Response): Promise<void> {
 
       if (pathsToDelete.length > 0) {
         console.log(`[deleteJob] Deleting ${pathsToDelete.length} files from storage for job ${id}...`)
-        const { error: storageError } = await supabase.storage.from('documents').remove(pathsToDelete)
+        const { error: storageError } = await scopedSupabase.storage.from('documents').remove(pathsToDelete)
         if (storageError) {
           console.error('[deleteJob] ❌ Failed to delete storage files:', storageError.message)
           // Continue with DB row deletion anyway
@@ -837,7 +868,7 @@ export async function deleteJob(req: Request, res: Response): Promise<void> {
     }
 
     // 3. Delete from jobs (cascades to generated_docs)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await scopedSupabase
       .from('jobs')
       .delete()
       .eq('id', id)

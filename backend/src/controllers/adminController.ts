@@ -139,15 +139,21 @@ export async function deleteFleetConfig(req: Request, res: Response): Promise<vo
 }
 
 export async function triggerHarvester(req: Request, res: Response): Promise<void> {
+  const { configId } = req.body;
+  
   emitFleetLog(`\n===========================================`)
-  emitFleetLog(`[Admin/triggerHarvester] Manual admin trigger: forcing Apify Fleet run...`)
+  if (configId) {
+    emitFleetLog(`[Admin/triggerHarvester] Manual admin trigger: forcing single Apify config run (ID: ${configId})...`)
+  } else {
+    emitFleetLog(`[Admin/triggerHarvester] Manual admin trigger: forcing full Apify Fleet run...`)
+  }
   emitFleetLog(`===========================================`)
 
   // Return immediately to prevent timeout, and run in background
   res.json({ success: true, message: "Harvester triggered in background." })
 
   try {
-    const freshJobs = await ingestFeeds()
+    const freshJobs = await ingestFeeds(configId)
     emitFleetLog(`[Admin/triggerHarvester] Ingested ${freshJobs.length} jobs. Upserting into global_jobs...`)
 
     if (freshJobs.length === 0) {
