@@ -212,7 +212,7 @@ ${JSON.stringify(RESPONSE_SCHEMA, null, 2)}
     return {
       company: "Unknown (AI Overloaded)",
       role: "Unknown",
-      matchScore: 0,
+      matchScore: -1,
       verdict: "The AI provider is currently overloaded and could not analyze this job.",
       matchesFound: [],
       missingOrWeak: [],
@@ -231,7 +231,7 @@ ${JSON.stringify(RESPONSE_SCHEMA, null, 2)}
     return {
       company: "Unknown Company",
       role: "Unknown Role",
-      matchScore: 0,
+      matchScore: -1,
       verdict: "The AI provider returned a truncated or invalid response due to server load. Please click 'Retry Analysis' to try again.",
       matchesFound: [],
       missingOrWeak: [],
@@ -699,14 +699,20 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
     const CONCURRENCY = 5
 
     async function evaluateAndQueue(job: any): Promise<void> {
+      if (evaluatedJobs.length >= 5) return // Cap at 5 jobs
+
       console.log(`[huntJobs] Pre-evaluating: ${job.title} at ${job.company}`)
       const jobDesc = job.description || job.description_html || ''
       const parsed = await analyzeJobText(jobDesc, candidateProfile, job.apply_url, [])
 
-      if (parsed.matchScore < 40) {
-        console.log(`[huntJobs] Skipped (Score ${parsed.matchScore} < 40): ${job.title} at ${job.company}`)
+      // Lowered threshold to 0 per user request
+      if (parsed.matchScore < 0) {
+        console.log(`[huntJobs] Skipped (Score ${parsed.matchScore} < 0): ${job.title} at ${job.company}`)
         return
       }
+
+      // Check again after awaiting LLM
+      if (evaluatedJobs.length >= 5) return
 
       const kanbanJob = {
         user_id: userId,
@@ -740,6 +746,11 @@ export async function huntJobs(req: Request, res: Response): Promise<void> {
 
     // Process in sliding windows of CONCURRENCY
     for (let i = 0; i < unEvaluatedJobs.length; i += CONCURRENCY) {
+      if (evaluatedJobs.length >= 5) {
+        console.log(`[huntJobs] Reached cap of 5 queued jobs. Stopping evaluation.`)
+        break
+      }
+
       const batch = unEvaluatedJobs.slice(i, i + CONCURRENCY)
       console.log(`[huntJobs] Evaluating batch ${Math.floor(i / CONCURRENCY) + 1}/${Math.ceil(unEvaluatedJobs.length / CONCURRENCY)} (${batch.length} jobs)...`)
       const results = await Promise.allSettled(batch.map(job => evaluateAndQueue(job)))

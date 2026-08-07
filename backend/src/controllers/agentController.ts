@@ -150,7 +150,8 @@ ${memoriesText}
   let modelConfig: any = {
     modelName: "openai/meta/llama-3.1-70b-instruct",
     apiKey: process.env.NVIDIA_API_KEY,
-    baseURL: "https://integrate.api.nvidia.com/v1"
+    baseURL: "https://integrate.api.nvidia.com/v1",
+    openaiEndpointFormat: "chat"
   };
   console.log(`[runAgent] Initializing Stagehand (LOCAL mode) with NVIDIA Llama 3.1 70B...`);
 
